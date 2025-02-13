@@ -41,6 +41,37 @@ func GetUserGroups(userID int64) ([]*Group, error) {
 	return groups, nil
 }
 
+func GetGroup(groupID int64) (*Group, error) {
+	logger.SUGAR.Infow("getting group", "group_id", groupID)
+
+	var dbGroup dbGroup
+
+	query := "SELECT * FROM groups WHERE group_id = ?"
+	if err := DB.Get(&dbGroup, query, groupID); err != nil {
+		return nil, err
+	}
+
+	return dbGroup.ToGroup(), nil
+}
+
+func GetOwnedGroups(ownerID int64) ([]*Group, error) {
+	logger.SUGAR.Infow("getting owned groups", "owner_id", ownerID)
+
+	var dbGroups []dbGroup
+
+	query := "SELECT * FROM groups WHERE owner_id = ?"
+	if err := DB.Select(&dbGroups, query, ownerID); err != nil {
+		return nil, err
+	}
+
+	groups := make([]*Group, len(dbGroups))
+	for i, dbg := range dbGroups {
+		groups[i] = dbg.ToGroup()
+	}
+
+	return groups, nil
+}
+
 // CreateGroup creates a new group and automatically adds the owner as a member.
 // The entire operation is wrapped in a transaction to ensure atomicity.
 func CreateGroup(ownerID int64, name string) (*Group, error) {

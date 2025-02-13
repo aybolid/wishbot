@@ -8,19 +8,16 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
-type TextHandler func(textMsg *tgbotapi.Message) error
-
-var textHandlers = map[string]TextHandler{
-	"pendingGroupCreation": handleCreatingGroupFlow,
-}
-
 func handleText(textMsg *tgbotapi.Message) error {
 	logger.SUGAR.Infow("handling text", "text", textMsg.Text, "chat_id", textMsg.Chat.ID, "from", textMsg.From)
 
 	var err error
 
 	if state.isPendingGroupCreation(textMsg.From.ID) {
-		err = textHandlers["pendingGroupCreation"](textMsg)
+		err = handleCreatingGroupFlow(textMsg)
+	}
+	if state.isPendingInviteCreation(textMsg.From.ID) {
+		err = handleCreatingInviteFlow(textMsg)
 	}
 
 	return err
@@ -41,4 +38,8 @@ func handleCreatingGroupFlow(textMsg *tgbotapi.Message) error {
 	bot.HandledSend(resp)
 
 	return nil
+}
+
+func handleCreatingInviteFlow(textMsg *tgbotapi.Message) error {
+	return nil // TODO
 }

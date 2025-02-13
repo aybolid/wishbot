@@ -78,7 +78,12 @@ func handleUpdate(update tgbotapi.Update) {
 	case update.Message != nil:
 		handleMessage(update.Message)
 	case update.CallbackQuery != nil:
-		break
+		err := handleCallbackQuery(update.CallbackQuery)
+		if err != nil {
+			logger.SUGAR.Error(err)
+			errResp := tgbotapi.NewMessage(update.CallbackQuery.Message.Chat.ID, "Oops, something went wrong. Please try again later.")
+			bot.HandledSend(errResp)
+		}
 	}
 }
 

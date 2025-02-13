@@ -22,6 +22,7 @@ var cmdHandlers = map[string]CmdHandler{
 	},
 	"/creategroup": handleCreateGroup,
 	"/mygroups":    handleMyGroups,
+	"/addmember":   handleAddMember,
 }
 
 func handleCommand(cmdMsg *tgbotapi.Message) error {
@@ -59,6 +60,37 @@ func handleMyGroups(cmdMsg *tgbotapi.Message) error {
 		resp := tgbotapi.NewMessage(cmdMsg.Chat.ID, fmt.Sprintf("Group: %s", group.Name))
 		bot.HandledSend(resp)
 	}
+
+	return nil
+}
+
+const INVITE_MEMBER_CALLBACK_PREFIX = "invite_member:"
+
+func handleAddMember(cmdMsg *tgbotapi.Message) error {
+	groups, err := db.GetOwnedGroups(cmdMsg.From.ID)
+	if err != nil {
+		return err
+	}
+
+	if len(groups) == 0 {
+		resp := tgbotapi.NewMessage(cmdMsg.Chat.ID, "You don't have any created groups yet. Please create one first.")
+		bot.HandledSend(resp)
+		return nil
+	}
+
+	resp := tgbotapi.NewMessage(cmdMsg.Chat.ID, "<b>Invite another member.</b>\n\nSelect a group to add a member to (you can add members only to groups you created).")
+
+	var buttons []tgbotapi.InlineKeyboardButton
+	for _, group := range groups {
+		buttons = append(buttons, tgbotapi.NewInlineKeyboardButtonData(group.Name, fmt.Sprintf("%s%d", INVITE_MEMBER_CALLBACK_PREFIX, group.ID)))
+	}
+
+	markup := tgbotapi.NewInlineKeyboardMarkup(buttons)
+
+	resp.ReplyMarkup = markup
+	resp.ParseMode = tgbotapi.ModeHTML
+
+	bot.HandledSend(resp)
 
 	return nil
 }
