@@ -12,6 +12,13 @@ type CmdHandler func(cmdMsg *tgbotapi.Message) error
 
 var cmdHandlers = map[string]CmdHandler{
 	"/start": func(cmdMsg *tgbotapi.Message) error {
+		if !cmdMsg.From.IsBot {
+			_, err := db.CreateUser(cmdMsg.From, cmdMsg.Chat.ID)
+			if err != nil {
+				return err
+			}
+		}
+
 		resp := tgbotapi.NewMessage(cmdMsg.Chat.ID, fmt.Sprintf("Hello, %s!", cmdMsg.From.FirstName))
 		bot.HandledSend(resp)
 

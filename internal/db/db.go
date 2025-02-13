@@ -31,6 +31,15 @@ var schema = `
 -- Enable foreign key constraints.
 PRAGMA foreign_keys = ON;
 
+-- Users table.
+CREATE TABLE IF NOT EXISTS users (
+	user_id INTEGER PRIMARY KEY, -- telegram user id
+	username TEXT NOT NULL UNIQUE,
+	chat_id INTEGER NOT NULL UNIQUE,
+	created_at TEXT NOT NULL DEFAULT (datetime('now')),
+	updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 -- Groups table.
 CREATE TABLE IF NOT EXISTS groups (
     group_id INTEGER PRIMARY KEY AUTOINCREMENT,
