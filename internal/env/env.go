@@ -11,6 +11,8 @@ type vars struct {
 	Debug bool
 	// Telegram bot API key.
 	BotAPIKey string
+	// Path to the SQLite database.
+	DBPath string
 }
 
 var VARS *vars
@@ -37,5 +39,10 @@ func Init() {
 	VARS.BotAPIKey = os.Getenv("BOT_API_KEY")
 	if VARS.BotAPIKey == "" {
 		panic("BOT_API_KEY is not set")
+	}
+
+	VARS.DBPath = os.Getenv("DB_PATH")
+	if VARS.DBPath == "" {
+		panic("DB_PATH is not set")
 	}
 }

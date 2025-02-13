@@ -19,6 +19,7 @@ var cmdHandlers = map[string]CmdHandler{
 
 		return nil
 	},
+	"/creategroup": handleCreateGroup,
 }
 
 func handleCommand(api *TgBotAPI, cmdMsg *tgbotapi.Message) error {
@@ -33,4 +34,8 @@ func handleCommand(api *TgBotAPI, cmdMsg *tgbotapi.Message) error {
 	}
 
 	return err
+}
+
+func handleCreateGroup(api *TgBotAPI, cmdMsg *tgbotapi.Message) error {
+	return nil
 }
