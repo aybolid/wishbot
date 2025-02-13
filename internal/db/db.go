@@ -23,4 +23,35 @@ func Init() {
 	}
 
 	logger.SUGAR.Infow("connected to database", "path", env.VARS.DBPath)
+
+	runStartupMigrations()
+}
+
+var schema = `
+-- Enable foreign key constraints.
+PRAGMA foreign_keys = ON;
+
+-- Groups table.
+CREATE TABLE IF NOT EXISTS groups (
+    group_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    owner_id INTEGER NOT NULL,
+    name TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- Group members table with a foreign key relation to groups.
+CREATE TABLE IF NOT EXISTS group_members (
+    group_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    PRIMARY KEY (group_id, user_id),
+    FOREIGN KEY(group_id) REFERENCES groups(group_id) ON DELETE CASCADE
+);
+`
+
+func runStartupMigrations() {
+	DB.MustExec(schema)
+	logger.SUGAR.Infow("ran startup migrations")
 }

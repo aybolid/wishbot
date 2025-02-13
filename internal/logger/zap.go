@@ -12,7 +12,7 @@ func Init() {
 		return
 	}
 
-	logger, err := zap.NewProduction()
+	logger, err := zap.NewDevelopment()
 	if err != nil {
 		panic(err)
 	}

@@ -2,7 +2,6 @@ package tgbot
 
 import (
 	"context"
-	"strings"
 
 	"github.com/aybolid/wishbot/internal/env"
 	"github.com/aybolid/wishbot/internal/logger"
@@ -13,6 +12,7 @@ type TgBotAPI struct {
 	tgbotapi.BotAPI
 }
 
+// HandledSend is a wrapper around the Send method that logs sent messages and errors if any.
 func (b *TgBotAPI) HandledSend(c tgbotapi.Chattable) {
 	msg, err := b.Send(c)
 	if err != nil {
@@ -22,25 +22,25 @@ func (b *TgBotAPI) HandledSend(c tgbotapi.Chattable) {
 	}
 }
 
-var API *TgBotAPI
+var bot *TgBotAPI
 
 // Initializes the Telegram bot API.
 //
 // Panics if an error occurs.
 func Init() {
-	if API != nil {
+	if bot != nil {
 		return
 	}
 
-	bot, err := tgbotapi.NewBotAPI(env.VARS.BotAPIKey)
+	botApi, err := tgbotapi.NewBotAPI(env.VARS.BotAPIKey)
 	if err != nil {
 		panic(err)
 	}
-	API = &TgBotAPI{BotAPI: *bot}
+	bot = &TgBotAPI{BotAPI: *botApi}
 
-	API.Debug = env.VARS.Debug
+	bot.Debug = env.VARS.Debug
 
-	logger.SUGAR.Infow("telegram bot initialized", "name", API.Self.UserName)
+	logger.SUGAR.Infow("telegram bot initialized", "name", bot.Self.UserName)
 }
 
 // Listens to incoming Telegram updates.
@@ -55,7 +55,7 @@ func ListenToUpdates() context.CancelFunc {
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
 
-	updates := API.GetUpdatesChan(u)
+	updates := bot.GetUpdatesChan(u)
 
 	go receiveUpdates(ctx, updates)
 
@@ -87,11 +87,15 @@ func handleMessage(msg *tgbotapi.Message) {
 
 	logger.SUGAR.Infow("received message", "text", text, "chat_id", msg.Chat.ID, "from", msg.From)
 
-	if strings.HasPrefix(text, "/") {
-		err := handleCommand(API, msg)
+	if msg.IsCommand() {
+		err := handleCommand(msg)
 		if err != nil {
 			logger.SUGAR.Error(err)
+			errResp := tgbotapi.NewMessage(msg.Chat.ID, "Oops, something went wrong. Please try again later.")
+			bot.HandledSend(errResp)
 		}
 		return
 	}
+
+	handleText(msg)
 }
