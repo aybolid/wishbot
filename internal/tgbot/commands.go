@@ -1,4 +1,4 @@
-package handlers
+package tgbot
 
 import (
 	"fmt"
@@ -7,15 +7,21 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
-type CmdHandler func(api *tgbotapi.BotAPI, cmdMsg *tgbotapi.Message) error
+type CmdHandler func(api *TgBotAPI, cmdMsg *tgbotapi.Message) error
 
 var cmdHandlers = map[string]CmdHandler{
-	"/start": func(api *tgbotapi.BotAPI, cmdMsg *tgbotapi.Message) error {
+	"/start": func(api *TgBotAPI, cmdMsg *tgbotapi.Message) error {
+		resp := tgbotapi.NewMessage(cmdMsg.Chat.ID, fmt.Sprintf("Hello, %s!", cmdMsg.From.FirstName))
+		api.HandledSend(resp)
+
+		resp = tgbotapi.NewMessage(cmdMsg.Chat.ID, "I am a bot that will help you with sharing your wishes with your friends.")
+		api.HandledSend(resp)
+
 		return nil
 	},
 }
 
-func HandleCommand(api *tgbotapi.BotAPI, cmdMsg *tgbotapi.Message) error {
+func handleCommand(api *TgBotAPI, cmdMsg *tgbotapi.Message) error {
 	logger.SUGAR.Infow("handling command", "command", cmdMsg.Text, "chat_id", cmdMsg.Chat.ID, "from", cmdMsg.From)
 
 	var err error

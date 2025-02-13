@@ -6,11 +6,23 @@ import (
 
 	"github.com/aybolid/wishbot/internal/env"
 	"github.com/aybolid/wishbot/internal/logger"
-	"github.com/aybolid/wishbot/internal/tgbot/handlers"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
-var API *tgbotapi.BotAPI
+type TgBotAPI struct {
+	tgbotapi.BotAPI
+}
+
+func (b *TgBotAPI) HandledSend(c tgbotapi.Chattable) {
+	msg, err := b.Send(c)
+	if err != nil {
+		logger.SUGAR.Errorw("failed to send message", "error", err)
+	} else {
+		logger.SUGAR.Infow("sent message", "text", msg.Text, "chat_id", msg.Chat.ID)
+	}
+}
+
+var API *TgBotAPI
 
 // Initializes the Telegram bot API.
 //
@@ -24,7 +36,7 @@ func Init() {
 	if err != nil {
 		panic(err)
 	}
-	API = bot
+	API = &TgBotAPI{BotAPI: *bot}
 
 	API.Debug = env.VARS.Debug
 
@@ -76,7 +88,7 @@ func handleMessage(msg *tgbotapi.Message) {
 	logger.SUGAR.Infow("received message", "text", text, "chat_id", msg.Chat.ID, "from", msg.From)
 
 	if strings.HasPrefix(text, "/") {
-		err := handlers.HandleCommand(API, msg)
+		err := handleCommand(API, msg)
 		if err != nil {
 			logger.SUGAR.Error(err)
 		}
