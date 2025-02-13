@@ -13,7 +13,7 @@ type vars struct {
 	BotAPIKey string
 }
 
-var VARS = vars{}
+var VARS *vars
 
 // Loads environment variables from .env file (using joho/godotenv)
 // and sets up the global VARS variable.
@@ -21,10 +21,16 @@ var VARS = vars{}
 // Panics if the .env file is not found or if any of the required
 // environment variables are not set.
 func Init() {
+	if VARS != nil {
+		return
+	}
+
 	err := godotenv.Load()
 	if err != nil {
 		panic(err)
 	}
+
+	VARS = &vars{}
 
 	VARS.Debug = os.Getenv("DEBUG") == "true"
 

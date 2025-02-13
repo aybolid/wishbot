@@ -2,10 +2,10 @@ package tgbot
 
 import (
 	"context"
-	"log"
 	"strings"
 
 	"github.com/aybolid/wishbot/internal/env"
+	"github.com/aybolid/wishbot/internal/logger"
 	"github.com/aybolid/wishbot/internal/tgbot/handlers"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
@@ -13,7 +13,13 @@ import (
 var API *tgbotapi.BotAPI
 
 // Initializes the Telegram bot API.
+//
+// Panics if an error occurs.
 func Init() {
+	if API != nil {
+		return
+	}
+
 	bot, err := tgbotapi.NewBotAPI(env.VARS.BotAPIKey)
 	if err != nil {
 		panic(err)
@@ -22,7 +28,7 @@ func Init() {
 
 	API.Debug = env.VARS.Debug
 
-	log.Printf("Authorized on account %s", API.Self.UserName)
+	logger.SUGAR.Infow("telegram bot initialized", "name", API.Self.UserName)
 }
 
 // Listens to incoming Telegram updates.
@@ -67,10 +73,13 @@ func handleUpdate(update tgbotapi.Update) {
 func handleMessage(msg *tgbotapi.Message) {
 	text := msg.Text
 
-	log.Printf("[%s]: %s", msg.From.UserName, text)
+	logger.SUGAR.Infow("received message", "text", text, "chat_id", msg.Chat.ID, "from", msg.From)
 
 	if strings.HasPrefix(text, "/") {
-		// TODO: handle error
-		_ = handlers.HandleCommand(API, msg)
+		err := handlers.HandleCommand(API, msg)
+		if err != nil {
+			logger.SUGAR.Error(err)
+		}
+		return
 	}
 }
