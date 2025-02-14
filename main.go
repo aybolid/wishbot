@@ -33,6 +33,15 @@ func main() {
 		switch cmd {
 		case "exit":
 			os.Exit(0)
+		case "state":
+			fmt.Println("Pending group creation")
+			for userID, pending := range tgbot.STATE.PendingGroupCreation {
+				fmt.Printf("\t%d: %t\n", userID, pending)
+			}
+			fmt.Println("Pending invite creation")
+			for userID, pending := range tgbot.STATE.PendingInviteCreation {
+				fmt.Printf("\t%d: %t\n", userID, pending)
+			}
 		default:
 			fmt.Printf("%s: unknown command\n", cmd)
 		}

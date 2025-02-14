@@ -64,6 +64,7 @@ func CreateGroupMember(groupID int64, userID int64) (*GroupMember, error) {
 	return dbm.ToGroupMember(), nil
 }
 
+// ToGroupMember converts a dbGroupMember to a GroupMember.
 func (dbm *dbGroupMember) ToGroupMember() *GroupMember {
 	return &GroupMember{
 		GroupID:   dbm.GroupID,

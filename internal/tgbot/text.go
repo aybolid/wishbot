@@ -13,10 +13,10 @@ func handleText(textMsg *tgbotapi.Message) error {
 
 	var err error
 
-	if state.isPendingGroupCreation(textMsg.From.ID) {
+	if STATE.isPendingGroupCreation(textMsg.From.ID) {
 		err = handleCreatingGroupFlow(textMsg)
 	}
-	if state.isPendingInviteCreation(textMsg.From.ID) {
+	if STATE.isPendingInviteCreation(textMsg.From.ID) {
 		err = handleCreatingInviteFlow(textMsg)
 	}
 
@@ -29,7 +29,7 @@ func handleCreatingGroupFlow(textMsg *tgbotapi.Message) error {
 		return err
 	}
 
-	state.releaseUser(textMsg.From.ID)
+	STATE.releaseUser(textMsg.From.ID)
 
 	resp := tgbotapi.NewMessage(textMsg.Chat.ID, fmt.Sprintf("Group \"%s\" was created!", group.Name))
 	bot.HandledSend(resp)
@@ -43,7 +43,7 @@ func handleCreatingGroupFlow(textMsg *tgbotapi.Message) error {
 func handleCreatingInviteFlow(textMsg *tgbotapi.Message) error {
 	var mentions []tgbotapi.MessageEntity
 	for _, entity := range textMsg.Entities {
-		if entity.Type == "mention" {
+		if entity.Type == "text_mention" || entity.Type == "mention" {
 			mentions = append(mentions, entity)
 		}
 	}
@@ -57,20 +57,22 @@ func handleCreatingInviteFlow(textMsg *tgbotapi.Message) error {
 	for _, mention := range mentions {
 		var user *db.User
 
-		if mention.User != nil {
+		if mention.User != nil { // if it's a text_mention we can use the user object
 			var err error
 			user, err = db.GetUser(mention.User.ID)
 			if err != nil {
 				resp := tgbotapi.NewMessage(
 					textMsg.Chat.ID,
 					fmt.Sprintf(
-						"Seems like %s %s didn't chat with me yet. Please try again after they do.", mention.User.FirstName, mention.User.LastName,
+						"Seems like %s %s didn't chat with me yet. Please try again after they do.",
+						mention.User.FirstName,
+						mention.User.LastName,
 					),
 				)
 				bot.HandledSend(resp)
 				continue
 			}
-		} else {
+		} else { // if it's a regular mention we need to extract the username
 			// + 1 to skip the @ symbol
 			userName := textMsg.Text[mention.Offset+1 : mention.Offset+mention.Length]
 			logger.SUGAR.Debugw("extracted user name from text", "username", userName)
@@ -78,7 +80,10 @@ func handleCreatingInviteFlow(textMsg *tgbotapi.Message) error {
 			var err error
 			user, err = db.GetUserByUsername(userName)
 			if err != nil {
-				resp := tgbotapi.NewMessage(textMsg.Chat.ID, fmt.Sprintf("Seems like %s didn't chat with me yet. Please try again after they do.", userName))
+				resp := tgbotapi.NewMessage(
+					textMsg.Chat.ID,
+					fmt.Sprintf("Seems like %s didn't chat with me yet. Please try again after they do.", userName),
+				)
 				bot.HandledSend(resp)
 				continue
 			}
@@ -86,14 +91,20 @@ func handleCreatingInviteFlow(textMsg *tgbotapi.Message) error {
 
 		inviteMsg := tgbotapi.NewMessage(user.ChatID, fmt.Sprintf("Your are invitied! %s", user.Username))
 		_, err := bot.Send(inviteMsg)
-		if err != nil {
-			resp := tgbotapi.NewMessage(textMsg.Chat.ID, fmt.Sprintf("Something went wrong while inviting %s. Please try again later.", user.Username))
+
+		if err != nil { // notify the user if something went wrong
+			resp := tgbotapi.NewMessage(
+				textMsg.Chat.ID,
+				fmt.Sprintf("Something went wrong while inviting %s. Please try again later.", user.Username),
+			)
 			bot.HandledSend(resp)
-		} else {
+		} else { // notify the user if everything went fine
 			logger.SUGAR.Infow("invited user", "user_id", user.UserID, "chat_id", user.ChatID)
 			resp := tgbotapi.NewMessage(textMsg.Chat.ID, fmt.Sprintf("Invited %s", user.Username))
 			bot.HandledSend(resp)
 		}
+
+		STATE.releaseUser(textMsg.From.ID)
 	}
 
 	return nil

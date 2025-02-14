@@ -34,7 +34,7 @@ var cmdHandlers = map[string]CmdHandler{
 
 func handleCommand(cmdMsg *tgbotapi.Message) error {
 	logger.SUGAR.Infow("handling command", "command", cmdMsg.Text, "chat_id", cmdMsg.Chat.ID, "from", cmdMsg.From)
-	state.releaseUser(cmdMsg.From.ID)
+	STATE.releaseUser(cmdMsg.From.ID)
 
 	var err error
 
@@ -49,7 +49,7 @@ func handleCommand(cmdMsg *tgbotapi.Message) error {
 
 func handleCreateGroup(cmdMsg *tgbotapi.Message) error {
 	userID := cmdMsg.From.ID
-	state.setPendingGroupCreation(userID)
+	STATE.setPendingGroupCreation(userID)
 
 	resp := tgbotapi.NewMessage(cmdMsg.Chat.ID, "Please send the name for your new group")
 	bot.HandledSend(resp)

@@ -3,29 +3,29 @@ package tgbot
 import "github.com/aybolid/wishbot/internal/logger"
 
 type botState struct {
-	// pendingGroupCreation tracks users that are currently creating a group.
+	// PendingGroupCreation tracks users that are currently creating a group.
 	// user id -> bool
-	pendingGroupCreation map[int64]bool
-	// pendingInviteCreation tracks users that are currently creating an invite.
+	PendingGroupCreation map[int64]bool
+	// PendingInviteCreation tracks users that are currently creating an invite.
 	// user id -> bool
-	pendingInviteCreation map[int64]bool
+	PendingInviteCreation map[int64]bool
 }
 
-var state = &botState{
-	pendingGroupCreation:  make(map[int64]bool),
-	pendingInviteCreation: make(map[int64]bool),
+var STATE = &botState{
+	PendingGroupCreation:  make(map[int64]bool),
+	PendingInviteCreation: make(map[int64]bool),
 }
 
 // isPendingGroupCreation returns true if a user is currently creating a group.
 func (s *botState) isPendingGroupCreation(userID int64) bool {
-	_, ok := s.pendingGroupCreation[userID]
+	_, ok := s.PendingGroupCreation[userID]
 	logger.SUGAR.Infow("is pending group creation", "user_id", userID, "pending", ok)
 	return ok
 }
 
 // isPendingInviteCreation returns true if a user is currently creating an invite.
 func (s *botState) isPendingInviteCreation(userID int64) bool {
-	_, ok := s.pendingInviteCreation[userID]
+	_, ok := s.PendingInviteCreation[userID]
 	logger.SUGAR.Infow("is pending invite creation", "user_id", userID, "pending", ok)
 	return ok
 }
@@ -34,7 +34,7 @@ func (s *botState) isPendingInviteCreation(userID int64) bool {
 func (s *botState) setPendingGroupCreation(userID int64) {
 	s.releaseUser(userID)
 	logger.SUGAR.Infow("setting pending group creation", "user_id", userID)
-	s.pendingGroupCreation[userID] = true
+	s.PendingGroupCreation[userID] = true
 }
 
 // setPendingInviteCreation marks a user as pending invite creation.
@@ -42,11 +42,12 @@ func (s *botState) setPendingGroupCreation(userID int64) {
 func (s *botState) setPendingInviteCreation(userID int64) {
 	s.releaseUser(userID)
 	logger.SUGAR.Infow("setting pending invite creation", "user_id", userID)
-	s.pendingInviteCreation[userID] = true
+	s.PendingInviteCreation[userID] = true
 }
 
 // releaseUser releases a user from pending flows.
 func (s *botState) releaseUser(userID int64) {
 	logger.SUGAR.Infow("releasing user", "user_id", userID)
-	delete(s.pendingGroupCreation, userID)
+	delete(s.PendingGroupCreation, userID)
+	delete(s.PendingInviteCreation, userID)
 }

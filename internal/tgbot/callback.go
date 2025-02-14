@@ -32,7 +32,7 @@ func handleInviteMemberCallback(callbackQuery *tgbotapi.CallbackQuery) error {
 		return err
 	}
 
-	state.setPendingInviteCreation(userID)
+	STATE.setPendingInviteCreation(userID)
 
 	resp := tgbotapi.NewMessage(callbackQuery.Message.Chat.ID, fmt.Sprintf("Please mention the users you want to invite to the \"%s\" group.", group.Name))
 	bot.HandledSend(resp)

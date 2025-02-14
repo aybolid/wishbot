@@ -3,7 +3,8 @@ package db
 import tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 
 type dbUser struct {
-	UserID    int64  `db:"user_id"`
+	UserID int64 `db:"user_id"`
+	// Username is stored without the @ symbol.
 	Username  string `db:"username"`
 	ChatID    int64  `db:"chat_id"`
 	CreatedAt string `db:"created_at"`
@@ -11,13 +12,15 @@ type dbUser struct {
 }
 
 type User struct {
-	UserID    int64
+	UserID int64
+	// Username is stored without the @ symbol.
 	Username  string
 	ChatID    int64
 	CreatedAt string
 	UpdatedAt string
 }
 
+// GetUser returns a user by user id.
 func GetUser(userID int64) (*User, error) {
 	var dbUser dbUser
 
@@ -29,6 +32,8 @@ func GetUser(userID int64) (*User, error) {
 	return dbUser.ToUser(), nil
 }
 
+// GetUserByUsername returns a user by username.
+// Username is stored without the @ symbol.
 func GetUserByUsername(username string) (*User, error) {
 	var dbUser dbUser
 
@@ -40,6 +45,7 @@ func GetUserByUsername(username string) (*User, error) {
 	return dbUser.ToUser(), nil
 }
 
+// CreateUser creates a new user in the database.
 func CreateUser(user *tgbotapi.User, chatID int64) (*User, error) {
 	tx, err := DB.Beginx()
 	if err != nil {
@@ -66,6 +72,7 @@ func CreateUser(user *tgbotapi.User, chatID int64) (*User, error) {
 	return dbu.ToUser(), nil
 }
 
+// ToUser converts a dbUser to a User.
 func (dbu *dbUser) ToUser() *User {
 	return &User{
 		UserID:    dbu.UserID,

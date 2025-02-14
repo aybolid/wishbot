@@ -41,6 +41,7 @@ func GetUserGroups(userID int64) ([]*Group, error) {
 	return groups, nil
 }
 
+// GetGroup returns a group by group id.
 func GetGroup(groupID int64) (*Group, error) {
 	logger.SUGAR.Infow("getting group", "group_id", groupID)
 
@@ -54,6 +55,7 @@ func GetGroup(groupID int64) (*Group, error) {
 	return dbGroup.ToGroup(), nil
 }
 
+// GetOwnedGroups retrieves all groups owned by a given user.
 func GetOwnedGroups(ownerID int64) ([]*Group, error) {
 	logger.SUGAR.Infow("getting owned groups", "owner_id", ownerID)
 
@@ -115,6 +117,7 @@ func CreateGroup(ownerID int64, name string) (*Group, error) {
 	return dbg.ToGroup(), nil
 }
 
+// ToGroup converts a dbGroup to a Group.
 func (dbg *dbGroup) ToGroup() *Group {
 	return &Group{
 		ID:        dbg.ID,
