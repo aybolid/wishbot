@@ -40,7 +40,7 @@ func main() {
 			}
 			fmt.Println("Pending invite creation")
 			for userID, pending := range tgbot.STATE.PendingInviteCreation {
-				fmt.Printf("\t%d: %t\n", userID, pending)
+				fmt.Printf("\t%d: %d\n", userID, pending)
 			}
 		default:
 			fmt.Printf("%s: unknown command\n", cmd)
