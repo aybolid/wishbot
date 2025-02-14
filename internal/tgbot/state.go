@@ -7,13 +7,13 @@ type botState struct {
 	// user id -> bool
 	PendingGroupCreation map[int64]bool
 	// PendingInviteCreation tracks users that are currently creating an invite.
-	// user id -> bool
-	PendingInviteCreation map[int64]bool
+	// user id -> group id
+	PendingInviteCreation map[int64]int64
 }
 
 var STATE = &botState{
 	PendingGroupCreation:  make(map[int64]bool),
-	PendingInviteCreation: make(map[int64]bool),
+	PendingInviteCreation: make(map[int64]int64),
 }
 
 // isPendingGroupCreation returns true if a user is currently creating a group.
@@ -39,10 +39,16 @@ func (s *botState) setPendingGroupCreation(userID int64) {
 
 // setPendingInviteCreation marks a user as pending invite creation.
 // Releases the user beforehand.
-func (s *botState) setPendingInviteCreation(userID int64) {
+func (s *botState) setPendingInviteCreation(userID int64, groupID int64) {
 	s.releaseUser(userID)
 	logger.SUGAR.Infow("setting pending invite creation", "user_id", userID)
-	s.PendingInviteCreation[userID] = true
+	s.PendingInviteCreation[userID] = groupID
+}
+
+// getPendingInviteCreation returns the group id for a user that is pending invite creation.
+func getPendingInviteCreation(userID int64) (int64, bool) {
+	groupID, ok := STATE.PendingInviteCreation[userID]
+	return groupID, ok
 }
 
 // releaseUser releases a user from pending flows.

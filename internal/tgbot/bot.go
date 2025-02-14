@@ -45,7 +45,7 @@ func Init() {
 
 // Listens to incoming Telegram updates.
 //
-// This function spaws a goroutine that listens to incoming updates and
+// This function spawns a goroutine that listens to incoming updates and
 // calls the appropriate handler. The returned cancel function can be used
 // to stop the goroutine.
 func ListenToUpdates() context.CancelFunc {
@@ -76,7 +76,12 @@ func receiveUpdates(ctx context.Context, updates tgbotapi.UpdatesChannel) {
 func handleUpdate(update tgbotapi.Update) {
 	switch {
 	case update.Message != nil:
-		handleMessage(update.Message)
+		err := handleMessage(update.Message)
+		if err != nil {
+			logger.SUGAR.Error(err)
+			errResp := tgbotapi.NewMessage(update.Message.Chat.ID, "Oops, something went wrong. Please try again later.")
+			bot.HandledSend(errResp)
+		}
 	case update.CallbackQuery != nil:
 		err := handleCallbackQuery(update.CallbackQuery)
 		if err != nil {
@@ -87,20 +92,14 @@ func handleUpdate(update tgbotapi.Update) {
 	}
 }
 
-func handleMessage(msg *tgbotapi.Message) {
+func handleMessage(msg *tgbotapi.Message) error {
 	text := msg.Text
 
 	logger.SUGAR.Infow("received message", "text", text, "chat_id", msg.Chat.ID, "from", msg.From)
 
 	if msg.IsCommand() {
-		err := handleCommand(msg)
-		if err != nil {
-			logger.SUGAR.Error(err)
-			errResp := tgbotapi.NewMessage(msg.Chat.ID, "Oops, something went wrong. Please try again later.")
-			bot.HandledSend(errResp)
-		}
-		return
+		return handleCommand(msg)
 	}
 
-	handleText(msg)
+	return handleText(msg)
 }
