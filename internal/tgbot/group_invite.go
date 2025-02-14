@@ -10,6 +10,7 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
+const INVITE_MEMBER_CALLBACK_PREFIX = "invite_member:"
 const ACCEPT_INVITE_CALLBACK_PREFIX = "accept_invite:"
 const REJECT_INVITE_CALLBACK_PREFIX = "reject_invite:"
 

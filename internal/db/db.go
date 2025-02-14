@@ -58,6 +58,19 @@ CREATE TABLE IF NOT EXISTS group_members (
     PRIMARY KEY (group_id, user_id),
     FOREIGN KEY(group_id) REFERENCES groups(group_id) ON DELETE CASCADE
 );
+
+-- Wishes table.
+CREATE TABLE IF NOT EXISTS wishes (
+    wish_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    group_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
+	url TEXT NOT NULL,
+	description TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY(group_id) REFERENCES groups(group_id) ON DELETE CASCADE,
+    FOREIGN KEY(user_id) REFERENCES users(user_id) ON DELETE CASCADE
+);
 `
 
 func runStartupMigrations() {

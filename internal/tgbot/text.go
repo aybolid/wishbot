@@ -3,6 +3,7 @@ package tgbot
 import (
 	"fmt"
 	"slices"
+	"strings"
 
 	"github.com/aybolid/wishbot/internal/db"
 	"github.com/aybolid/wishbot/internal/logger"
@@ -19,6 +20,9 @@ func handleText(textMsg *tgbotapi.Message) error {
 	}
 	if State.isPendingInviteCreation(textMsg.From.ID) {
 		err = handleCreatingInviteFlow(textMsg)
+	}
+	if State.isPendingWishCreation(textMsg.From.ID) {
+		err = handleCreatingWishFlow(textMsg)
 	}
 
 	return err
@@ -42,18 +46,18 @@ func handleCreatingGroupFlow(textMsg *tgbotapi.Message) error {
 }
 
 func handleCreatingInviteFlow(textMsg *tgbotapi.Message) error {
+	groupID, ok := getPendingInviteCreation(textMsg.From.ID)
+	if !ok {
+		State.releaseUser(textMsg.From.ID)
+		return fmt.Errorf("user is not pending invite creation")
+	}
+
 	mentions := getMentions(textMsg)
 
 	if len(mentions) == 0 {
 		resp := tgbotapi.NewMessage(textMsg.Chat.ID, "Please mention at least one user to invite.")
 		bot.HandledSend(resp)
 		return nil
-	}
-
-	groupID, ok := getPendingInviteCreation(textMsg.From.ID)
-	if !ok {
-		State.releaseUser(textMsg.From.ID)
-		return fmt.Errorf("user is not pending invite creation")
 	}
 
 	groupMembers, err := db.GetGroupMembers(groupID)
@@ -141,5 +145,99 @@ func handleCreatingInviteFlow(textMsg *tgbotapi.Message) error {
 
 	State.releaseUser(textMsg.From.ID)
 
+	return nil
+}
+
+func handleCreatingWishFlow(textMsg *tgbotapi.Message) error {
+	groupID, ok := getPendingWishCreation(textMsg.From.ID)
+	if !ok {
+		State.releaseUser(textMsg.From.ID)
+		return fmt.Errorf("user is not pending wish creation")
+	}
+
+	wishURL := ""
+	descriptionOffset := 0
+	for _, entity := range textMsg.Entities {
+		if entity.Type == "url" || entity.Type == "text_link" {
+			if entity.Type == "text_link" {
+				wishURL = entity.URL
+			} else {
+				wishURL = textMsg.Text[entity.Offset : entity.Offset+entity.Length]
+			}
+			descriptionOffset = entity.Offset + entity.Length
+		}
+	}
+
+	if wishURL == "" {
+		resp := tgbotapi.NewMessage(textMsg.Chat.ID, "No URL found! Send the URL and some description if applicable.")
+		bot.HandledSend(resp)
+		return nil
+	}
+
+	description := ""
+	if len(textMsg.Text) > descriptionOffset {
+		description = strings.TrimSpace(textMsg.Text[descriptionOffset:])
+	}
+
+	logger.Sugared.Debugw("creating wish", "wish_url", wishURL, "description", description)
+
+	wish, err := db.CreateWish(wishURL, description, textMsg.From.ID, groupID)
+	if err != nil {
+		return err
+	}
+
+	group, err := db.GetGroup(groupID)
+	if err != nil {
+		resp := tgbotapi.NewMessage(textMsg.Chat.ID, "Something went wrong while trying to notify the group. Wish was created successfully though.")
+		bot.HandledSend(resp)
+		return nil
+	}
+
+	members, err := db.GetGroupMembers(groupID)
+	if err != nil {
+		resp := tgbotapi.NewMessage(textMsg.Chat.ID, "Something went wrong while trying to notify the group. Wish was created successfully though.")
+		bot.HandledSend(resp)
+		return nil
+	}
+
+	for _, member := range members {
+		if member.UserID == textMsg.From.ID {
+			continue
+		}
+
+		go func() {
+			user, err := db.GetUser(member.UserID)
+			if err != nil {
+				logger.Sugared.Errorw("error getting user for notification", "user_id", member.UserID, "error", err)
+				return
+			}
+
+			msg := tgbotapi.NewMessage(
+				user.ChatID,
+				fmt.Sprintf(
+					"Hey! %s %s added a new wish to the \"%s\" group.",
+					textMsg.From.FirstName,
+					textMsg.From.LastName,
+					group.Name,
+				),
+			)
+			bot.HandledSend(msg)
+
+			wishMsg := tgbotapi.NewMessage(
+				user.ChatID,
+				fmt.Sprintf(
+					"%s\n\n%s",
+					wish.URL,
+					wish.Description,
+				),
+			)
+			bot.HandledSend(wishMsg)
+		}()
+	}
+
+	resp := tgbotapi.NewMessage(textMsg.Chat.ID, "Wish was created successfully!")
+	bot.HandledSend(resp)
+
+	State.releaseUser(textMsg.From.ID)
 	return nil
 }

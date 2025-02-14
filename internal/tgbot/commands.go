@@ -15,6 +15,7 @@ var cmdHandlers = map[string]cmdHandler{
 	"/creategroup": handleCreateGroup,
 	"/mygroups":    handleMyGroups,
 	"/addmember":   handleAddMember,
+	"/addwish":     handleAddWish,
 }
 
 func handleCommand(cmdMsg *tgbotapi.Message) error {
@@ -73,8 +74,6 @@ func handleMyGroups(cmdMsg *tgbotapi.Message) error {
 	return nil
 }
 
-const INVITE_MEMBER_CALLBACK_PREFIX = "invite_member:"
-
 func handleAddMember(cmdMsg *tgbotapi.Message) error {
 	groups, err := db.GetOwnedGroups(cmdMsg.From.ID)
 	if err != nil {
@@ -92,6 +91,40 @@ func handleAddMember(cmdMsg *tgbotapi.Message) error {
 	var buttons []tgbotapi.InlineKeyboardButton
 	for _, group := range groups {
 		buttons = append(buttons, tgbotapi.NewInlineKeyboardButtonData(group.Name, fmt.Sprintf("%s%d", INVITE_MEMBER_CALLBACK_PREFIX, group.ID)))
+	}
+
+	markup := tgbotapi.NewInlineKeyboardMarkup(buttons)
+
+	resp.ReplyMarkup = markup
+	resp.ParseMode = tgbotapi.ModeHTML
+
+	bot.HandledSend(resp)
+
+	return nil
+}
+
+const ADD_WISH_CALLBACK_PREFIX = "add_wish:"
+
+func handleAddWish(cmdMsg *tgbotapi.Message) error {
+	groups, err := db.GetUserGroups(cmdMsg.From.ID)
+	if err != nil {
+		return err
+	}
+
+	if len(groups) == 0 {
+		resp := tgbotapi.NewMessage(cmdMsg.Chat.ID, "You don't have any groups yet. Please create or join one first.")
+		bot.HandledSend(resp)
+		return nil
+	}
+
+	resp := tgbotapi.NewMessage(
+		cmdMsg.Chat.ID,
+		"<b>Add new wish.</b>\n\nSelect a group to add a wish to. Created wish will be shared with all members of the group.",
+	)
+
+	var buttons []tgbotapi.InlineKeyboardButton
+	for _, group := range groups {
+		buttons = append(buttons, tgbotapi.NewInlineKeyboardButtonData(group.Name, fmt.Sprintf("%s%d", ADD_WISH_CALLBACK_PREFIX, group.ID)))
 	}
 
 	markup := tgbotapi.NewInlineKeyboardMarkup(buttons)

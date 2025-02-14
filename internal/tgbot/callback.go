@@ -16,6 +16,7 @@ var callbackHandlers = map[string]callbackHandler{
 	INVITE_MEMBER_CALLBACK_PREFIX: handleInviteMemberCallback,
 	REJECT_INVITE_CALLBACK_PREFIX: handleRejectInviteCallback,
 	ACCEPT_INVITE_CALLBACK_PREFIX: handleAcceptInviteCallback,
+	ADD_WISH_CALLBACK_PREFIX:      handleAddWishCallback,
 }
 
 func handleCallbackQuery(callbackQuery *tgbotapi.CallbackQuery) error {
@@ -120,6 +121,41 @@ func handleAcceptInviteCallback(callbackQuery *tgbotapi.CallbackQuery) error {
 		),
 	)
 	bot.HandledSend(msg)
+
+	return nil
+}
+
+func handleAddWishCallback(callbackQuery *tgbotapi.CallbackQuery) error {
+	groupID, err := strconv.ParseInt(callbackQuery.Data[len(ADD_WISH_CALLBACK_PREFIX):], 10, 64)
+	if err != nil {
+		return err
+	}
+
+	group, err := db.GetGroup(groupID)
+	if err != nil {
+		return err
+	}
+
+	resp := tgbotapi.NewMessage(
+		callbackQuery.Message.Chat.ID,
+		fmt.Sprintf(
+			"Ok! Lets add a wish to the \"%s\" group.",
+			group.Name,
+		),
+	)
+	bot.HandledSend(resp)
+
+	resp = tgbotapi.NewMessage(
+		callbackQuery.Message.Chat.ID,
+		"Please send the URL of the wish you want to add with some description if applicable\\.\n\nExample:\n>>https://example\\.com\n>>This is a description",
+	)
+	resp.ParseMode = tgbotapi.ModeMarkdownV2
+	bot.HandledSend(resp)
+
+	deleteReq := tgbotapi.NewDeleteMessage(callbackQuery.Message.Chat.ID, callbackQuery.Message.MessageID)
+	bot.HandledSend(deleteReq)
+
+	State.setPendingWishCreation(callbackQuery.From.ID, groupID)
 
 	return nil
 }

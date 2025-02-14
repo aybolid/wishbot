@@ -9,6 +9,9 @@ type botState struct {
 	// PendingInviteCreation tracks users that are currently creating an invite.
 	// user id -> group id
 	PendingInviteCreation map[int64]int64
+	// PendingWishCreation tracks users that are currently creating a wish.
+	// user id -> group id
+	PendingWishCreation map[int64]int64
 }
 
 // Inner state of the bot.
@@ -16,6 +19,7 @@ type botState struct {
 var State = &botState{
 	PendingGroupCreation:  make(map[int64]bool),
 	PendingInviteCreation: make(map[int64]int64),
+	PendingWishCreation:   make(map[int64]int64),
 }
 
 // isPendingGroupCreation returns true if a user is currently creating a group.
@@ -29,6 +33,13 @@ func (s *botState) isPendingGroupCreation(userID int64) bool {
 func (s *botState) isPendingInviteCreation(userID int64) bool {
 	_, ok := s.PendingInviteCreation[userID]
 	logger.Sugared.Infow("is pending invite creation", "user_id", userID, "pending", ok)
+	return ok
+}
+
+// isPendingWishCreation returns true if a user is currently creating a wish.
+func (s *botState) isPendingWishCreation(userID int64) bool {
+	_, ok := s.PendingWishCreation[userID]
+	logger.Sugared.Infow("is pending wish creation", "user_id", userID, "pending", ok)
 	return ok
 }
 
@@ -47,9 +58,23 @@ func (s *botState) setPendingInviteCreation(userID int64, groupID int64) {
 	s.PendingInviteCreation[userID] = groupID
 }
 
+// setPendingWishCreation marks a user as pending wish creation.
+// Releases the user beforehand.
+func (s *botState) setPendingWishCreation(userID int64, groupID int64) {
+	s.releaseUser(userID)
+	logger.Sugared.Infow("setting pending wish creation", "user_id", userID)
+	s.PendingWishCreation[userID] = groupID
+}
+
 // getPendingInviteCreation returns the group id for a user that is pending invite creation.
 func getPendingInviteCreation(userID int64) (int64, bool) {
 	groupID, ok := State.PendingInviteCreation[userID]
+	return groupID, ok
+}
+
+// getPendingWishCreation returns the group id for a user that is pending wish creation.
+func getPendingWishCreation(userID int64) (int64, bool) {
+	groupID, ok := State.PendingWishCreation[userID]
 	return groupID, ok
 }
 
@@ -58,4 +83,5 @@ func (s *botState) releaseUser(userID int64) {
 	logger.Sugared.Infow("releasing user", "user_id", userID)
 	delete(s.PendingGroupCreation, userID)
 	delete(s.PendingInviteCreation, userID)
+	delete(s.PendingWishCreation, userID)
 }
