@@ -17,6 +17,7 @@ func init() {
 	logger.Init()
 
 	db.Init()
+
 	tgbot.Init()
 }
 
@@ -28,6 +29,7 @@ func main() {
 		select {} // block forever in release mode
 	}
 
+	// simple repl for debugging only
 	reader := bufio.NewReader(os.Stdin)
 	for {
 		cmd, err := reader.ReadString('\n')

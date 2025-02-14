@@ -74,21 +74,19 @@ func receiveUpdates(ctx context.Context, updates tgbotapi.UpdatesChannel) {
 }
 
 func handleUpdate(update tgbotapi.Update) {
+	var err error
 	switch {
+
 	case update.Message != nil:
-		err := handleMessage(update.Message)
-		if err != nil {
-			logger.Sugared.Error(err)
-			errResp := tgbotapi.NewMessage(update.Message.Chat.ID, "Oops, something went wrong. Please try again later.")
-			bot.HandledSend(errResp)
-		}
+		err = handleMessage(update.Message)
 	case update.CallbackQuery != nil:
-		err := handleCallbackQuery(update.CallbackQuery)
-		if err != nil {
-			logger.Sugared.Error(err)
-			errResp := tgbotapi.NewMessage(update.CallbackQuery.Message.Chat.ID, "Oops, something went wrong. Please try again later.")
-			bot.HandledSend(errResp)
-		}
+		err = handleCallbackQuery(update.CallbackQuery)
+	}
+
+	if err != nil {
+		logger.Sugared.Error(err)
+		errResp := tgbotapi.NewMessage(update.Message.Chat.ID, "Oops, something went wrong. Please try again later.")
+		bot.HandledSend(errResp)
 	}
 }
 
