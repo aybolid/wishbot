@@ -11,7 +11,7 @@ import (
 )
 
 func handleCallbackQuery(callbackQuery *tgbotapi.CallbackQuery) error {
-	logger.SUGAR.Infow("handling callback query", "data", callbackQuery.Data)
+	logger.Sugared.Infow("handling callback query", "data", callbackQuery.Data)
 
 	if strings.HasPrefix(callbackQuery.Data, INVITE_MEMBER_CALLBACK_PREFIX) {
 		return handleInviteMemberCallback(callbackQuery)
@@ -38,7 +38,7 @@ func handleInviteMemberCallback(callbackQuery *tgbotapi.CallbackQuery) error {
 		return err
 	}
 
-	STATE.setPendingInviteCreation(userID, groupID)
+	State.setPendingInviteCreation(userID, groupID)
 
 	resp := tgbotapi.NewMessage(callbackQuery.Message.Chat.ID, fmt.Sprintf("Please mention the users you want to invite to the \"%s\" group.", group.Name))
 	bot.HandledSend(resp)

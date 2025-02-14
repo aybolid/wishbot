@@ -25,7 +25,7 @@ func GetUser(userID int64) (*User, error) {
 	var dbUser dbUser
 
 	query := "SELECT * FROM users WHERE user_id = ?"
-	if err := DB.Get(&dbUser, query, userID); err != nil {
+	if err := Database.Get(&dbUser, query, userID); err != nil {
 		return nil, err
 	}
 
@@ -38,7 +38,7 @@ func GetUserByUsername(username string) (*User, error) {
 	var dbUser dbUser
 
 	query := "SELECT * FROM users WHERE username = ?"
-	if err := DB.Get(&dbUser, query, username); err != nil {
+	if err := Database.Get(&dbUser, query, username); err != nil {
 		return nil, err
 	}
 
@@ -47,7 +47,7 @@ func GetUserByUsername(username string) (*User, error) {
 
 // CreateUser creates a new user in the database.
 func CreateUser(user *tgbotapi.User, chatID int64) (*User, error) {
-	tx, err := DB.Beginx()
+	tx, err := Database.Beginx()
 	if err != nil {
 		return nil, err
 	}

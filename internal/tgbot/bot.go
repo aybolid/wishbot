@@ -8,21 +8,21 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
-type TgBotAPI struct {
+type botAPI struct {
 	tgbotapi.BotAPI
 }
 
 // HandledSend is a wrapper around the Send method that logs sent messages and errors if any.
-func (b *TgBotAPI) HandledSend(c tgbotapi.Chattable) {
+func (b *botAPI) HandledSend(c tgbotapi.Chattable) {
 	msg, err := b.Send(c)
 	if err != nil {
-		logger.SUGAR.Errorw("failed to send message", "error", err)
+		logger.Sugared.Errorw("failed to send message", "error", err)
 	} else {
-		logger.SUGAR.Infow("sent message", "text", msg.Text, "chat_id", msg.Chat.ID)
+		logger.Sugared.Infow("sent message", "text", msg.Text, "chat_id", msg.Chat.ID)
 	}
 }
 
-var bot *TgBotAPI
+var bot *botAPI
 
 // Initializes the Telegram bot API.
 //
@@ -32,15 +32,15 @@ func Init() {
 		return
 	}
 
-	botApi, err := tgbotapi.NewBotAPI(env.VARS.BotAPIKey)
+	botApi, err := tgbotapi.NewBotAPI(env.Vars.BotAPIKey)
 	if err != nil {
 		panic(err)
 	}
-	bot = &TgBotAPI{BotAPI: *botApi}
+	bot = &botAPI{BotAPI: *botApi}
 
-	bot.Debug = env.VARS.Debug
+	bot.Debug = env.Vars.Debug
 
-	logger.SUGAR.Infow("telegram bot initialized", "name", bot.Self.UserName)
+	logger.Sugared.Infow("telegram bot initialized", "name", bot.Self.UserName)
 }
 
 // Listens to incoming Telegram updates.
@@ -78,14 +78,14 @@ func handleUpdate(update tgbotapi.Update) {
 	case update.Message != nil:
 		err := handleMessage(update.Message)
 		if err != nil {
-			logger.SUGAR.Error(err)
+			logger.Sugared.Error(err)
 			errResp := tgbotapi.NewMessage(update.Message.Chat.ID, "Oops, something went wrong. Please try again later.")
 			bot.HandledSend(errResp)
 		}
 	case update.CallbackQuery != nil:
 		err := handleCallbackQuery(update.CallbackQuery)
 		if err != nil {
-			logger.SUGAR.Error(err)
+			logger.Sugared.Error(err)
 			errResp := tgbotapi.NewMessage(update.CallbackQuery.Message.Chat.ID, "Oops, something went wrong. Please try again later.")
 			bot.HandledSend(errResp)
 		}
@@ -95,7 +95,7 @@ func handleUpdate(update tgbotapi.Update) {
 func handleMessage(msg *tgbotapi.Message) error {
 	text := msg.Text
 
-	logger.SUGAR.Infow("received message", "text", text, "chat_id", msg.Chat.ID, "from", msg.From)
+	logger.Sugared.Infow("received message", "text", text, "chat_id", msg.Chat.ID, "from", msg.From)
 
 	if msg.IsCommand() {
 		return handleCommand(msg)

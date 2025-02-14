@@ -10,14 +10,14 @@ import (
 )
 
 func handleText(textMsg *tgbotapi.Message) error {
-	logger.SUGAR.Infow("handling text", "text", textMsg.Text, "chat_id", textMsg.Chat.ID, "from", textMsg.From)
+	logger.Sugared.Infow("handling text", "text", textMsg.Text, "chat_id", textMsg.Chat.ID, "from", textMsg.From)
 
 	var err error
 
-	if STATE.isPendingGroupCreation(textMsg.From.ID) {
+	if State.isPendingGroupCreation(textMsg.From.ID) {
 		err = handleCreatingGroupFlow(textMsg)
 	}
-	if STATE.isPendingInviteCreation(textMsg.From.ID) {
+	if State.isPendingInviteCreation(textMsg.From.ID) {
 		err = handleCreatingInviteFlow(textMsg)
 	}
 
@@ -30,7 +30,7 @@ func handleCreatingGroupFlow(textMsg *tgbotapi.Message) error {
 		return err
 	}
 
-	STATE.releaseUser(textMsg.From.ID)
+	State.releaseUser(textMsg.From.ID)
 
 	resp := tgbotapi.NewMessage(textMsg.Chat.ID, fmt.Sprintf("Group \"%s\" was created!", group.Name))
 	bot.HandledSend(resp)
@@ -52,7 +52,7 @@ func handleCreatingInviteFlow(textMsg *tgbotapi.Message) error {
 
 	groupID, ok := getPendingInviteCreation(textMsg.From.ID)
 	if !ok {
-		STATE.releaseUser(textMsg.From.ID)
+		State.releaseUser(textMsg.From.ID)
 		return fmt.Errorf("user is not pending invite creation")
 	}
 
@@ -84,7 +84,7 @@ func handleCreatingInviteFlow(textMsg *tgbotapi.Message) error {
 			// if it's a regular mention we need to extract the username
 			// + 1 to skip the @ symbol
 			userName := textMsg.Text[mention.Offset+1 : mention.Offset+mention.Length]
-			logger.SUGAR.Debugw("extracted user name from text", "username", userName)
+			logger.Sugared.Debugw("extracted user name from text", "username", userName)
 
 			user, err = db.GetUserByUsername(userName)
 			if err != nil {
@@ -111,7 +111,7 @@ func handleCreatingInviteFlow(textMsg *tgbotapi.Message) error {
 
 		// check if the user is trying to invite themself
 		if user.UserID == textMsg.From.ID {
-			logger.SUGAR.Warnw("user tried to invite themself", "user_id", user.UserID)
+			logger.Sugared.Warnw("user tried to invite themself", "user_id", user.UserID)
 			continue
 		}
 
@@ -131,12 +131,12 @@ func handleCreatingInviteFlow(textMsg *tgbotapi.Message) error {
 			bot.HandledSend(resp)
 		} else {
 			// notify the user if everything went fine
-			logger.SUGAR.Infow("invited user", "user_id", user.UserID, "chat_id", user.ChatID)
+			logger.Sugared.Infow("invited user", "user_id", user.UserID, "chat_id", user.ChatID)
 			resp := tgbotapi.NewMessage(textMsg.Chat.ID, fmt.Sprintf("Invited %s", user.Username))
 			bot.HandledSend(resp)
 		}
 
-		STATE.releaseUser(textMsg.From.ID)
+		State.releaseUser(textMsg.From.ID)
 	}
 
 	return nil

@@ -20,7 +20,7 @@ type groupInvite struct {
 }
 
 func (i *groupInvite) sendInviteMessage() error {
-	logger.SUGAR.Infow("sending group invite message", "from", i.inviter.ID, "to", i.invited.UserID, "chat_id", i.invited.ChatID)
+	logger.Sugared.Infow("sending group invite message", "from", i.inviter.ID, "to", i.invited.UserID, "chat_id", i.invited.ChatID)
 
 	group, err := db.GetGroup(i.groupId)
 	if err != nil {
@@ -49,7 +49,7 @@ func (i *groupInvite) sendInviteMessage() error {
 	_, err = bot.Send(invite)
 
 	if err != nil {
-		logger.SUGAR.Error(err)
+		logger.Sugared.Error(err)
 	}
 	return err
 }

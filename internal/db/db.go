@@ -7,22 +7,22 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-var DB *sqlx.DB
+var Database *sqlx.DB
 
 // Initializes the database connection.
 func Init() {
 	var err error
 
-	DB, err = sqlx.Open("sqlite3", env.VARS.DBPath)
+	Database, err = sqlx.Open("sqlite3", env.Vars.DBPath)
 	if err != nil {
 		panic(err)
 	}
 
-	if err = DB.Ping(); err != nil {
+	if err = Database.Ping(); err != nil {
 		panic(err)
 	}
 
-	logger.SUGAR.Infow("connected to database", "path", env.VARS.DBPath)
+	logger.Sugared.Infow("connected to database", "path", env.Vars.DBPath)
 
 	runStartupMigrations()
 }
@@ -61,6 +61,6 @@ CREATE TABLE IF NOT EXISTS group_members (
 `
 
 func runStartupMigrations() {
-	DB.MustExec(schema)
-	logger.SUGAR.Infow("ran startup migrations")
+	Database.MustExec(schema)
+	logger.Sugared.Infow("ran startup migrations")
 }

@@ -8,9 +8,9 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
-type CmdHandler func(cmdMsg *tgbotapi.Message) error
+type cmdHandler func(cmdMsg *tgbotapi.Message) error
 
-var cmdHandlers = map[string]CmdHandler{
+var cmdHandlers = map[string]cmdHandler{
 	"/start": func(cmdMsg *tgbotapi.Message) error {
 		if !cmdMsg.From.IsBot {
 			_, err := db.CreateUser(cmdMsg.From, cmdMsg.Chat.ID)
@@ -33,15 +33,15 @@ var cmdHandlers = map[string]CmdHandler{
 }
 
 func handleCommand(cmdMsg *tgbotapi.Message) error {
-	logger.SUGAR.Infow("handling command", "command", cmdMsg.Text, "chat_id", cmdMsg.Chat.ID, "from", cmdMsg.From)
-	STATE.releaseUser(cmdMsg.From.ID)
+	logger.Sugared.Infow("handling command", "command", cmdMsg.Text, "chat_id", cmdMsg.Chat.ID, "from", cmdMsg.From)
+	State.releaseUser(cmdMsg.From.ID)
 
 	var err error
 
 	if handler, ok := cmdHandlers[cmdMsg.Text]; ok {
 		err = handler(cmdMsg)
 	} else {
-		logger.SUGAR.Errorw("unknown command received", "command", cmdMsg.Text, "chat_id", cmdMsg.Chat.ID, "from", cmdMsg.From)
+		logger.Sugared.Errorw("unknown command received", "command", cmdMsg.Text, "chat_id", cmdMsg.Chat.ID, "from", cmdMsg.From)
 	}
 
 	return err
@@ -49,7 +49,7 @@ func handleCommand(cmdMsg *tgbotapi.Message) error {
 
 func handleCreateGroup(cmdMsg *tgbotapi.Message) error {
 	userID := cmdMsg.From.ID
-	STATE.setPendingGroupCreation(userID)
+	State.setPendingGroupCreation(userID)
 
 	resp := tgbotapi.NewMessage(cmdMsg.Chat.ID, "Please send the name for your new group")
 	bot.HandledSend(resp)

@@ -24,6 +24,10 @@ func main() {
 	cancel := tgbot.ListenToUpdates()
 	defer cancel()
 
+	if !env.Vars.Debug {
+		select {} // block forever in release mode
+	}
+
 	reader := bufio.NewReader(os.Stdin)
 	for {
 		cmd, err := reader.ReadString('\n')
@@ -37,11 +41,11 @@ func main() {
 			os.Exit(0)
 		case "state":
 			fmt.Println("Pending group creation")
-			for userID, pending := range tgbot.STATE.PendingGroupCreation {
+			for userID, pending := range tgbot.State.PendingGroupCreation {
 				fmt.Printf("\t%d: %t\n", userID, pending)
 			}
 			fmt.Println("Pending invite creation")
-			for userID, pending := range tgbot.STATE.PendingInviteCreation {
+			for userID, pending := range tgbot.State.PendingInviteCreation {
 				fmt.Printf("\t%d: %d\n", userID, pending)
 			}
 		default:

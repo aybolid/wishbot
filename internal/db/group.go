@@ -20,7 +20,7 @@ type Group struct {
 
 // GetUserGroups retrieves groups for a user by joining groups with group_members.
 func GetUserGroups(userID int64) ([]*Group, error) {
-	logger.SUGAR.Infow("getting user groups", "user_id", userID)
+	logger.Sugared.Infow("getting user groups", "user_id", userID)
 
 	var dbGroups []dbGroup
 	query := `
@@ -29,7 +29,7 @@ func GetUserGroups(userID int64) ([]*Group, error) {
         INNER JOIN group_members gm ON g.group_id = gm.group_id
         WHERE gm.user_id = ?
     `
-	if err := DB.Select(&dbGroups, query, userID); err != nil {
+	if err := Database.Select(&dbGroups, query, userID); err != nil {
 		return nil, err
 	}
 
@@ -43,12 +43,12 @@ func GetUserGroups(userID int64) ([]*Group, error) {
 
 // GetGroup returns a group by group id.
 func GetGroup(groupID int64) (*Group, error) {
-	logger.SUGAR.Infow("getting group", "group_id", groupID)
+	logger.Sugared.Infow("getting group", "group_id", groupID)
 
 	var dbGroup dbGroup
 
 	query := "SELECT * FROM groups WHERE group_id = ?"
-	if err := DB.Get(&dbGroup, query, groupID); err != nil {
+	if err := Database.Get(&dbGroup, query, groupID); err != nil {
 		return nil, err
 	}
 
@@ -57,12 +57,12 @@ func GetGroup(groupID int64) (*Group, error) {
 
 // GetOwnedGroups retrieves all groups owned by a given user.
 func GetOwnedGroups(ownerID int64) ([]*Group, error) {
-	logger.SUGAR.Infow("getting owned groups", "owner_id", ownerID)
+	logger.Sugared.Infow("getting owned groups", "owner_id", ownerID)
 
 	var dbGroups []dbGroup
 
 	query := "SELECT * FROM groups WHERE owner_id = ?"
-	if err := DB.Select(&dbGroups, query, ownerID); err != nil {
+	if err := Database.Select(&dbGroups, query, ownerID); err != nil {
 		return nil, err
 	}
 
@@ -77,9 +77,9 @@ func GetOwnedGroups(ownerID int64) ([]*Group, error) {
 // CreateGroup creates a new group and automatically adds the owner as a member.
 // The entire operation is wrapped in a transaction to ensure atomicity.
 func CreateGroup(ownerID int64, name string) (*Group, error) {
-	logger.SUGAR.Infow("creating group", "owner_id", ownerID, "name", name)
+	logger.Sugared.Infow("creating group", "owner_id", ownerID, "name", name)
 
-	tx, err := DB.Beginx()
+	tx, err := Database.Beginx()
 	if err != nil {
 		return nil, err
 	}

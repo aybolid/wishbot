@@ -18,11 +18,11 @@ type GroupMember struct {
 
 // GetGroupMembers retrieves all members of a given group.
 func GetGroupMembers(groupID int64) ([]*GroupMember, error) {
-	logger.SUGAR.Infow("getting group members", "group_id", groupID)
+	logger.Sugared.Infow("getting group members", "group_id", groupID)
 
 	var dbMembers []dbGroupMember
 	query := "SELECT * FROM group_members WHERE group_id = ?"
-	if err := DB.Select(&dbMembers, query, groupID); err != nil {
+	if err := Database.Select(&dbMembers, query, groupID); err != nil {
 		return nil, err
 	}
 
@@ -37,9 +37,9 @@ func GetGroupMembers(groupID int64) ([]*GroupMember, error) {
 // CreateGroupMember inserts a new member into a group and returns the inserted row.
 // The operation is wrapped in a transaction to allow rollback in case of an error.
 func CreateGroupMember(groupID int64, userID int64) (*GroupMember, error) {
-	logger.SUGAR.Infow("creating group member", "group_id", groupID, "user_id", userID)
+	logger.Sugared.Infow("creating group member", "group_id", groupID, "user_id", userID)
 
-	tx, err := DB.Beginx()
+	tx, err := Database.Beginx()
 	if err != nil {
 		return nil, err
 	}

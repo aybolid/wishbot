@@ -15,7 +15,7 @@ type vars struct {
 	DBPath string
 }
 
-var VARS *vars
+var Vars *vars
 
 // Loads environment variables from .env file (using joho/godotenv)
 // and sets up the global VARS variable.
@@ -23,7 +23,7 @@ var VARS *vars
 // Panics if the .env file is not found or if any of the required
 // environment variables are not set.
 func Init() {
-	if VARS != nil {
+	if Vars != nil {
 		return
 	}
 
@@ -32,17 +32,17 @@ func Init() {
 		panic(err)
 	}
 
-	VARS = &vars{}
+	Vars = &vars{}
 
-	VARS.Debug = os.Getenv("DEBUG") == "true"
+	Vars.Debug = os.Getenv("DEBUG") == "true"
 
-	VARS.BotAPIKey = os.Getenv("BOT_API_KEY")
-	if VARS.BotAPIKey == "" {
+	Vars.BotAPIKey = os.Getenv("BOT_API_KEY")
+	if Vars.BotAPIKey == "" {
 		panic("BOT_API_KEY is not set")
 	}
 
-	VARS.DBPath = os.Getenv("DB_PATH")
-	if VARS.DBPath == "" {
+	Vars.DBPath = os.Getenv("DB_PATH")
+	if Vars.DBPath == "" {
 		panic("DB_PATH is not set")
 	}
 }
