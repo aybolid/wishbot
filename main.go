@@ -12,13 +12,15 @@ import (
 	"github.com/aybolid/wishbot/internal/tgbot"
 )
 
-func main() {
+func init() {
 	env.Init()
 	logger.Init()
 
 	db.Init()
 	tgbot.Init()
+}
 
+func main() {
 	cancel := tgbot.ListenToUpdates()
 	defer cancel()
 

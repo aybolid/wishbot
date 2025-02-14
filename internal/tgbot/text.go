@@ -2,6 +2,7 @@ package tgbot
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/aybolid/wishbot/internal/db"
 	"github.com/aybolid/wishbot/internal/logger"
@@ -49,6 +50,17 @@ func handleCreatingInviteFlow(textMsg *tgbotapi.Message) error {
 		return nil
 	}
 
+	groupID, ok := getPendingInviteCreation(textMsg.From.ID)
+	if !ok {
+		STATE.releaseUser(textMsg.From.ID)
+		return fmt.Errorf("user is not pending invite creation")
+	}
+
+	groupMembers, err := db.GetGroupMembers(groupID)
+	if err != nil {
+		return err
+	}
+
 	for _, mention := range mentions {
 		var err error
 		var user *db.User
@@ -85,10 +97,22 @@ func handleCreatingInviteFlow(textMsg *tgbotapi.Message) error {
 			}
 		}
 
-		groupID, ok := getPendingInviteCreation(123)
-		if !ok {
-			STATE.releaseUser(textMsg.From.ID)
-			return fmt.Errorf("user is not pending invite creation")
+		// check if the user is already a member of the group
+		if slices.ContainsFunc(groupMembers, func(m *db.GroupMember) bool {
+			return m.UserID == user.UserID
+		}) {
+			resp := tgbotapi.NewMessage(
+				textMsg.Chat.ID,
+				fmt.Sprintf("@%s are already a member of the group.", user.Username),
+			)
+			bot.HandledSend(resp)
+			continue
+		}
+
+		// check if the user is trying to invite themself
+		if user.UserID == textMsg.From.ID {
+			logger.SUGAR.Warnw("user tried to invite themself", "user_id", user.UserID)
+			continue
 		}
 
 		invite := groupInvite{

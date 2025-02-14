@@ -19,6 +19,9 @@ func handleCallbackQuery(callbackQuery *tgbotapi.CallbackQuery) error {
 	if strings.HasPrefix(callbackQuery.Data, REJECT_INVITE_CALLBACK_PREFIX) {
 		return handleRejectInviteCallback(callbackQuery)
 	}
+	if strings.HasPrefix(callbackQuery.Data, ACCEPT_INVITE_CALLBACK_PREFIX) {
+		return handleAcceptInviteCallback(callbackQuery)
+	}
 
 	return nil
 }
@@ -60,13 +63,51 @@ func handleRejectInviteCallback(callbackQuery *tgbotapi.CallbackQuery) error {
 	resp := tgbotapi.NewMessage(callbackQuery.Message.Chat.ID, "You rejected the invite")
 	bot.HandledSend(resp)
 
-	deleteReq := tgbotapi.NewDeleteMessage(inviter.ChatID, callbackQuery.Message.MessageID)
+	deleteReq := tgbotapi.NewDeleteMessage(callbackQuery.Message.Chat.ID, callbackQuery.Message.MessageID)
 	bot.HandledSend(deleteReq)
 
 	msg := tgbotapi.NewMessage(
 		inviter.ChatID,
 		fmt.Sprintf(
 			"%s %s rejected your invite to the \"%s\" group.",
+			callbackQuery.From.FirstName, callbackQuery.From.LastName,
+			group.Name,
+		),
+	)
+	bot.HandledSend(msg)
+
+	return nil
+}
+
+func handleAcceptInviteCallback(callbackQuery *tgbotapi.CallbackQuery) error {
+	inviterId, groupId, err := parseInviteCallbackQuery(callbackQuery, ACCEPT_INVITE_CALLBACK_PREFIX)
+	if err != nil {
+		return err
+	}
+	inviter, err := db.GetUser(inviterId)
+	if err != nil {
+		return err
+	}
+	group, err := db.GetGroup(groupId)
+	if err != nil {
+		return err
+	}
+
+	_, err = db.CreateGroupMember(group.ID, callbackQuery.From.ID)
+	if err != nil {
+		return err
+	}
+
+	resp := tgbotapi.NewMessage(callbackQuery.Message.Chat.ID, "You accepted the invite")
+	bot.HandledSend(resp)
+
+	deleteReq := tgbotapi.NewDeleteMessage(callbackQuery.Message.Chat.ID, callbackQuery.Message.MessageID)
+	bot.HandledSend(deleteReq)
+
+	msg := tgbotapi.NewMessage(
+		inviter.ChatID,
+		fmt.Sprintf(
+			"%s %s accepted your invite to the \"%s\" group.",
 			callbackQuery.From.FirstName, callbackQuery.From.LastName,
 			group.Name,
 		),
