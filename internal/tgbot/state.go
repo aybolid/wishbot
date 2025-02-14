@@ -11,6 +11,8 @@ type botState struct {
 	PendingInviteCreation map[int64]int64
 }
 
+// Inner state of the bot.
+// User can only be in one of the actions at a time.
 var State = &botState{
 	PendingGroupCreation:  make(map[int64]bool),
 	PendingInviteCreation: make(map[int64]int64),

@@ -10,18 +10,25 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
+type callbackHandler = func(*tgbotapi.CallbackQuery) error
+
+var callbackHandlers = map[string]callbackHandler{
+	INVITE_MEMBER_CALLBACK_PREFIX: handleInviteMemberCallback,
+	REJECT_INVITE_CALLBACK_PREFIX: handleRejectInviteCallback,
+	ACCEPT_INVITE_CALLBACK_PREFIX: handleAcceptInviteCallback,
+}
+
 func handleCallbackQuery(callbackQuery *tgbotapi.CallbackQuery) error {
 	logger.Sugared.Infow("handling callback query", "data", callbackQuery.Data)
 
-	if strings.HasPrefix(callbackQuery.Data, INVITE_MEMBER_CALLBACK_PREFIX) {
-		return handleInviteMemberCallback(callbackQuery)
+	delimIndex := strings.IndexByte(callbackQuery.Data, ':')
+	prefix := callbackQuery.Data[0 : delimIndex+1]
+
+	handler, ok := callbackHandlers[prefix]
+	if ok {
+		return handler(callbackQuery)
 	}
-	if strings.HasPrefix(callbackQuery.Data, REJECT_INVITE_CALLBACK_PREFIX) {
-		return handleRejectInviteCallback(callbackQuery)
-	}
-	if strings.HasPrefix(callbackQuery.Data, ACCEPT_INVITE_CALLBACK_PREFIX) {
-		return handleAcceptInviteCallback(callbackQuery)
-	}
+	logger.Sugared.Errorw("no callback handler for prefix", "prefix", prefix)
 
 	return nil
 }

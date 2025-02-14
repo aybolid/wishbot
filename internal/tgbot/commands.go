@@ -11,22 +11,7 @@ import (
 type cmdHandler func(cmdMsg *tgbotapi.Message) error
 
 var cmdHandlers = map[string]cmdHandler{
-	"/start": func(cmdMsg *tgbotapi.Message) error {
-		if !cmdMsg.From.IsBot {
-			_, err := db.CreateUser(cmdMsg.From, cmdMsg.Chat.ID)
-			if err != nil {
-				return err
-			}
-		}
-
-		resp := tgbotapi.NewMessage(cmdMsg.Chat.ID, fmt.Sprintf("Hello, %s!", cmdMsg.From.FirstName))
-		bot.HandledSend(resp)
-
-		resp = tgbotapi.NewMessage(cmdMsg.Chat.ID, "I am a bot that will help you with sharing your wishes with your friends.")
-		bot.HandledSend(resp)
-
-		return nil
-	},
+	"/start":       handleStart,
 	"/creategroup": handleCreateGroup,
 	"/mygroups":    handleMyGroups,
 	"/addmember":   handleAddMember,
@@ -45,6 +30,23 @@ func handleCommand(cmdMsg *tgbotapi.Message) error {
 	}
 
 	return err
+}
+
+func handleStart(cmdMsg *tgbotapi.Message) error {
+	if !cmdMsg.From.IsBot {
+		_, err := db.CreateUser(cmdMsg.From, cmdMsg.Chat.ID)
+		if err != nil {
+			return err
+		}
+	}
+
+	resp := tgbotapi.NewMessage(cmdMsg.Chat.ID, fmt.Sprintf("Hello, %s!", cmdMsg.From.FirstName))
+	bot.HandledSend(resp)
+
+	resp = tgbotapi.NewMessage(cmdMsg.Chat.ID, "I am a bot that will help you with sharing your wishes with your friends.")
+	bot.HandledSend(resp)
+
+	return nil
 }
 
 func handleCreateGroup(cmdMsg *tgbotapi.Message) error {

@@ -35,7 +35,7 @@ func handleCreatingGroupFlow(textMsg *tgbotapi.Message) error {
 	resp := tgbotapi.NewMessage(textMsg.Chat.ID, fmt.Sprintf("Group \"%s\" was created!", group.Name))
 	bot.HandledSend(resp)
 
-	resp = tgbotapi.NewMessage(textMsg.Chat.ID, "Now you can add members to the group.")
+	resp = tgbotapi.NewMessage(textMsg.Chat.ID, "Now you can add members to the group. /addmember")
 	bot.HandledSend(resp)
 
 	return nil
@@ -62,82 +62,84 @@ func handleCreatingInviteFlow(textMsg *tgbotapi.Message) error {
 	}
 
 	for _, mention := range mentions {
-		var err error
-		var user *db.User
+		go func() {
+			var err error
+			var user *db.User
 
-		if mention.User != nil {
-			// if it's a text_mention we can use the user object
-			user, err = db.GetUser(mention.User.ID)
-			if err != nil {
+			if mention.User != nil {
+				// if it's a text_mention we can use the user object
+				user, err = db.GetUser(mention.User.ID)
+				if err != nil {
+					resp := tgbotapi.NewMessage(
+						textMsg.Chat.ID,
+						fmt.Sprintf(
+							"Seems like %s %s didn't chat with me yet. Please try again after they do.",
+							mention.User.FirstName,
+							mention.User.LastName,
+						),
+					)
+					bot.HandledSend(resp)
+					return
+				}
+			} else {
+				// if it's a regular mention we need to extract the username
+				// + 1 to skip the @ symbol
+				userName := textMsg.Text[mention.Offset+1 : mention.Offset+mention.Length]
+				logger.Sugared.Debugw("extracted user name from text", "username", userName)
+
+				user, err = db.GetUserByUsername(userName)
+				if err != nil {
+					resp := tgbotapi.NewMessage(
+						textMsg.Chat.ID,
+						fmt.Sprintf("Seems like @%s didn't chat with me yet. Please try again after they do.", userName),
+					)
+					bot.HandledSend(resp)
+					return
+				}
+			}
+
+			// check if the user is already a member of the group
+			if slices.ContainsFunc(groupMembers, func(m *db.GroupMember) bool {
+				return m.UserID == user.UserID
+			}) {
 				resp := tgbotapi.NewMessage(
 					textMsg.Chat.ID,
-					fmt.Sprintf(
-						"Seems like %s %s didn't chat with me yet. Please try again after they do.",
-						mention.User.FirstName,
-						mention.User.LastName,
-					),
+					fmt.Sprintf("@%s are already a member of the group.", user.Username),
 				)
 				bot.HandledSend(resp)
-				continue
+				return
 			}
-		} else {
-			// if it's a regular mention we need to extract the username
-			// + 1 to skip the @ symbol
-			userName := textMsg.Text[mention.Offset+1 : mention.Offset+mention.Length]
-			logger.Sugared.Debugw("extracted user name from text", "username", userName)
 
-			user, err = db.GetUserByUsername(userName)
+			// check if the user is trying to invite themself
+			if user.UserID == textMsg.From.ID {
+				logger.Sugared.Warnw("user tried to invite themself", "user_id", user.UserID)
+				return
+			}
+
+			invite := groupInvite{
+				invited: user,
+				inviter: textMsg.From,
+				groupId: groupID,
+			}
+			err = invite.sendInviteMessage()
+
 			if err != nil {
+				// notify the user if something went wrong
 				resp := tgbotapi.NewMessage(
 					textMsg.Chat.ID,
-					fmt.Sprintf("Seems like @%s didn't chat with me yet. Please try again after they do.", userName),
+					fmt.Sprintf("Something went wrong while inviting %s. Please try again later.", user.Username),
 				)
 				bot.HandledSend(resp)
-				continue
+			} else {
+				// notify the user if everything went fine
+				logger.Sugared.Infow("invited user", "user_id", user.UserID, "chat_id", user.ChatID)
+				resp := tgbotapi.NewMessage(textMsg.Chat.ID, fmt.Sprintf("Invited %s", user.Username))
+				bot.HandledSend(resp)
 			}
-		}
-
-		// check if the user is already a member of the group
-		if slices.ContainsFunc(groupMembers, func(m *db.GroupMember) bool {
-			return m.UserID == user.UserID
-		}) {
-			resp := tgbotapi.NewMessage(
-				textMsg.Chat.ID,
-				fmt.Sprintf("@%s are already a member of the group.", user.Username),
-			)
-			bot.HandledSend(resp)
-			continue
-		}
-
-		// check if the user is trying to invite themself
-		if user.UserID == textMsg.From.ID {
-			logger.Sugared.Warnw("user tried to invite themself", "user_id", user.UserID)
-			continue
-		}
-
-		invite := groupInvite{
-			invited: user,
-			inviter: textMsg.From,
-			groupId: groupID,
-		}
-		err = invite.sendInviteMessage()
-
-		if err != nil {
-			// notify the user if something went wrong
-			resp := tgbotapi.NewMessage(
-				textMsg.Chat.ID,
-				fmt.Sprintf("Something went wrong while inviting %s. Please try again later.", user.Username),
-			)
-			bot.HandledSend(resp)
-		} else {
-			// notify the user if everything went fine
-			logger.Sugared.Infow("invited user", "user_id", user.UserID, "chat_id", user.ChatID)
-			resp := tgbotapi.NewMessage(textMsg.Chat.ID, fmt.Sprintf("Invited %s", user.Username))
-			bot.HandledSend(resp)
-		}
-
-		State.releaseUser(textMsg.From.ID)
+		}()
 	}
+
+	State.releaseUser(textMsg.From.ID)
 
 	return nil
 }
