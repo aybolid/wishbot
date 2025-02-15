@@ -11,12 +11,18 @@ import (
 type cmdHandler func(cmdMsg *tgbotapi.Message) error
 
 var cmdHandlers = map[string]cmdHandler{
-	"/start":       handleStart,
+	"/start": handleStart,
+
 	"/creategroup": handleCreateGroup,
+	"/leavegroup":  handleLeaveGroup,
 	"/mygroups":    handleMyGroups,
-	"/addmember":   handleAddMember,
-	"/addwish":     handleAddWish,
-	"/wishes":      handleWishes,
+
+	"/addmember": handleAddMember,
+
+	"/addwish": handleAddWish,
+	"/wishes":  handleWishes,
+
+	"/cancel": handleCancel,
 }
 
 func handleCommand(cmdMsg *tgbotapi.Message) error {
@@ -32,6 +38,61 @@ func handleCommand(cmdMsg *tgbotapi.Message) error {
 	}
 
 	return err
+}
+
+const LEAVE_GROUP_CALLBACK_PREFIX = "leave_group:"
+
+func handleLeaveGroup(cmdMsg *tgbotapi.Message) error {
+	groups, err := db.GetUserGroups(cmdMsg.From.ID)
+	if err != nil {
+		return err
+	}
+
+	switch len(groups) {
+	case 0:
+		resp := tgbotapi.NewMessage(cmdMsg.Chat.ID, "You are not a member of any group.")
+		bot.HandledSend(resp)
+		return nil
+
+	case 1:
+		group := groups[0]
+
+		message := ""
+		if group.OwnerID == cmdMsg.From.ID {
+			message = fmt.Sprintf(
+				"Do you really want to leave the \"%s\" group?\n<b>This action will delete the group, members and wishes as you are the owner.</b>",
+				group.Name,
+			)
+		} else {
+			message = fmt.Sprintf("Do you really want to leave the \"%s\" group?", group.Name)
+		}
+
+		sendAreYouSure(&areYouSureConfig{
+			chatID:       cmdMsg.Chat.ID,
+			message:      message,
+			actionID:     LEAVE_GROUP_ACTION,
+			callbackData: fmt.Sprintf("%d", group.GroupID),
+		})
+
+		return nil
+
+	default:
+		resp := tgbotapi.NewMessage(cmdMsg.Chat.ID, "<b>Leave group :(</b>\n\nSelect a group to leave.")
+
+		resp.ReplyMarkup = getGroupSelectKeyboard(groups, func(group *db.Group) string {
+			return fmt.Sprintf("%s%d", LEAVE_GROUP_CALLBACK_PREFIX, group.GroupID)
+		})
+		resp.ParseMode = tgbotapi.ModeHTML
+
+		bot.HandledSend(resp)
+		return nil
+	}
+}
+
+func handleCancel(cmdMsg *tgbotapi.Message) error {
+	// this command is meant to release the user from pending flows
+	// as long as we do it in the command handler, we don't need to do anything here
+	return nil
 }
 
 func handleStart(cmdMsg *tgbotapi.Message) error {

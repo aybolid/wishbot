@@ -64,6 +64,46 @@ func CreateGroupMember(groupID int64, userID int64) (*GroupMember, error) {
 	return dbm.toGroupMember(), nil
 }
 
+// DeleteGroupMember deletes a group member and all associated wishes.
+// NOTE: If the user is the owner of the group, the group and all related data will be deleted.
+func DeleteGroupMember(groupID int64, userID int64) error {
+	group, err := GetGroup(groupID)
+	if err != nil {
+		return err
+	}
+
+	tx, err := Database.Beginx()
+	if err != nil {
+		return err
+	}
+
+	if userID == group.OwnerID {
+		// deleting the group should also delete all members and wishes
+		deleteGroupQuery := "DELETE FROM groups WHERE group_id = ?"
+		if _, err := tx.Exec(deleteGroupQuery, groupID); err != nil {
+			tx.Rollback()
+			return err
+		}
+	} else {
+		deleteMemberQuery := "DELETE FROM group_members WHERE group_id = ? AND user_id = ?"
+		if _, err := tx.Exec(deleteMemberQuery, groupID, userID); err != nil {
+			tx.Rollback()
+			return err
+		}
+		deleteWishesQuery := "DELETE FROM wishes WHERE group_id = ? AND user_id = ?"
+		if _, err := tx.Exec(deleteWishesQuery, groupID, userID); err != nil {
+			tx.Rollback()
+			return err
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (dbm *dbGroupMember) toGroupMember() *GroupMember {
 	return &GroupMember{
 		GroupID:   dbm.GroupID,

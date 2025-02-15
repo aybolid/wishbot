@@ -13,24 +13,64 @@ import (
 type callbackHandler = func(*tgbotapi.CallbackQuery) error
 
 var callbackHandlers = map[string]callbackHandler{
-	INVITE_MEMBER_CALLBACK_PREFIX:  handleInviteMemberCallback,
-	REJECT_INVITE_CALLBACK_PREFIX:  handleRejectInviteCallback,
-	ACCEPT_INVITE_CALLBACK_PREFIX:  handleAcceptInviteCallback,
-	ADD_WISH_CALLBACK_PREFIX:       handleAddWishCallback,
-	DISPLAY_WISHES_CALLBACK_PREFIX: handleDisplayWishesCallback,
+	INVITE_MEMBER_CALLBACK_PREFIX:    handleInviteMemberCallback,
+	REJECT_INVITE_CALLBACK_PREFIX:    handleRejectInviteCallback,
+	ACCEPT_INVITE_CALLBACK_PREFIX:    handleAcceptInviteCallback,
+	ADD_WISH_CALLBACK_PREFIX:         handleAddWishCallback,
+	DISPLAY_WISHES_CALLBACK_PREFIX:   handleDisplayWishesCallback,
+	LEAVE_GROUP_CALLBACK_PREFIX:      handleLeaveGroupCallback,
+	ARE_YOU_SURE_NO_CALLBACK_PREFIX:  handleNo,
+	ARE_YOU_SURE_YES_CALLBACK_PREFIX: handleYes,
 }
 
 func handleCallbackQuery(callbackQuery *tgbotapi.CallbackQuery) error {
+	defer func() {
+		deleteReq := tgbotapi.NewDeleteMessage(callbackQuery.Message.Chat.ID, callbackQuery.Message.MessageID)
+		bot.HandledSend(deleteReq)
+	}()
+
 	logger.Sugared.Infow("handling callback query", "data", callbackQuery.Data)
 
 	delimIndex := strings.IndexByte(callbackQuery.Data, ':')
 	prefix := callbackQuery.Data[0 : delimIndex+1]
+	logger.Sugared.Debugw("callback query prefix extracted", "prefix", prefix)
 
 	handler, ok := callbackHandlers[prefix]
 	if ok {
 		return handler(callbackQuery)
 	}
 	logger.Sugared.Errorw("no callback handler for prefix", "prefix", prefix)
+
+	return nil
+}
+
+func handleLeaveGroupCallback(callbackQuery *tgbotapi.CallbackQuery) error {
+	groupID, err := strconv.ParseInt(callbackQuery.Data[len(LEAVE_GROUP_CALLBACK_PREFIX):], 10, 64)
+	if err != nil {
+		return err
+	}
+
+	group, err := db.GetGroup(groupID)
+	if err != nil {
+		return err
+	}
+
+	message := ""
+	if group.OwnerID == callbackQuery.From.ID {
+		message = fmt.Sprintf(
+			"Do you really want to leave the \"%s\" group?\n<b>This action will delete the group, members and wishes as you are the owner.</b>",
+			group.Name,
+		)
+	} else {
+		message = fmt.Sprintf("Do you really want to leave the \"%s\" group?", group.Name)
+	}
+
+	sendAreYouSure(&areYouSureConfig{
+		chatID:       callbackQuery.Message.Chat.ID,
+		message:      message,
+		actionID:     LEAVE_GROUP_ACTION,
+		callbackData: fmt.Sprintf("%d", group.GroupID),
+	})
 
 	return nil
 }
@@ -72,9 +112,6 @@ func handleRejectInviteCallback(callbackQuery *tgbotapi.CallbackQuery) error {
 	resp := tgbotapi.NewMessage(callbackQuery.Message.Chat.ID, "You rejected the invite")
 	bot.HandledSend(resp)
 
-	deleteReq := tgbotapi.NewDeleteMessage(callbackQuery.Message.Chat.ID, callbackQuery.Message.MessageID)
-	bot.HandledSend(deleteReq)
-
 	msg := tgbotapi.NewMessage(
 		inviter.ChatID,
 		fmt.Sprintf(
@@ -109,9 +146,6 @@ func handleAcceptInviteCallback(callbackQuery *tgbotapi.CallbackQuery) error {
 
 	resp := tgbotapi.NewMessage(callbackQuery.Message.Chat.ID, "You accepted the invite")
 	bot.HandledSend(resp)
-
-	deleteReq := tgbotapi.NewDeleteMessage(callbackQuery.Message.Chat.ID, callbackQuery.Message.MessageID)
-	bot.HandledSend(deleteReq)
 
 	msg := tgbotapi.NewMessage(
 		inviter.ChatID,
@@ -153,9 +187,6 @@ func handleAddWishCallback(callbackQuery *tgbotapi.CallbackQuery) error {
 	resp.ParseMode = tgbotapi.ModeMarkdownV2
 	bot.HandledSend(resp)
 
-	deleteReq := tgbotapi.NewDeleteMessage(callbackQuery.Message.Chat.ID, callbackQuery.Message.MessageID)
-	bot.HandledSend(deleteReq)
-
 	State.setPendingWishCreation(callbackQuery.From.ID, groupID)
 
 	return nil
@@ -196,9 +227,6 @@ func handleDisplayWishesCallback(callbackQuery *tgbotapi.CallbackQuery) error {
 		),
 	)
 	bot.HandledSend(resp)
-
-	deleteReq := tgbotapi.NewDeleteMessage(callbackQuery.Message.Chat.ID, callbackQuery.Message.MessageID)
-	bot.HandledSend(deleteReq)
 
 	for user, wishes := range groupedByUser {
 		go func() {
