@@ -29,7 +29,7 @@ func GetUser(userID int64) (*User, error) {
 		return nil, err
 	}
 
-	return dbUser.ToUser(), nil
+	return dbUser.toUser(), nil
 }
 
 // GetUserByUsername returns a user by username.
@@ -42,7 +42,7 @@ func GetUserByUsername(username string) (*User, error) {
 		return nil, err
 	}
 
-	return dbUser.ToUser(), nil
+	return dbUser.toUser(), nil
 }
 
 // CreateUser creates a new user in the database.
@@ -69,11 +69,10 @@ func CreateUser(user *tgbotapi.User, chatID int64) (*User, error) {
 		return nil, err
 	}
 
-	return dbu.ToUser(), nil
+	return dbu.toUser(), nil
 }
 
-// ToUser converts a dbUser to a User.
-func (dbu *dbUser) ToUser() *User {
+func (dbu *dbUser) toUser() *User {
 	return &User{
 		UserID:    dbu.UserID,
 		Username:  dbu.Username,

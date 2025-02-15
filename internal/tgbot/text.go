@@ -123,7 +123,7 @@ func handleCreatingInviteFlow(textMsg *tgbotapi.Message) error {
 			invite := groupInvite{
 				invited: user,
 				inviter: textMsg.From,
-				groupId: groupID,
+				groupID: groupID,
 			}
 			err = invite.sendInviteMessage()
 

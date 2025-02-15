@@ -3,7 +3,7 @@ package db
 import "github.com/aybolid/wishbot/internal/logger"
 
 type dbGroup struct {
-	ID        int64  `db:"group_id"`
+	GroupID   int64  `db:"group_id"`
 	Name      string `db:"name"`
 	OwnerID   int64  `db:"owner_id"`
 	CreatedAt string `db:"created_at"`
@@ -11,7 +11,7 @@ type dbGroup struct {
 }
 
 type Group struct {
-	ID        int64
+	GroupID   int64
 	Name      string
 	OwnerID   int64
 	CreatedAt string
@@ -35,7 +35,7 @@ func GetUserGroups(userID int64) ([]*Group, error) {
 
 	groups := make([]*Group, len(dbGroups))
 	for i, dbg := range dbGroups {
-		groups[i] = dbg.ToGroup()
+		groups[i] = dbg.toGroup()
 	}
 
 	return groups, nil
@@ -52,7 +52,7 @@ func GetGroup(groupID int64) (*Group, error) {
 		return nil, err
 	}
 
-	return dbGroup.ToGroup(), nil
+	return dbGroup.toGroup(), nil
 }
 
 // GetOwnedGroups retrieves all groups owned by a given user.
@@ -68,7 +68,7 @@ func GetOwnedGroups(ownerID int64) ([]*Group, error) {
 
 	groups := make([]*Group, len(dbGroups))
 	for i, dbg := range dbGroups {
-		groups[i] = dbg.ToGroup()
+		groups[i] = dbg.toGroup()
 	}
 
 	return groups, nil
@@ -114,13 +114,13 @@ func CreateGroup(ownerID int64, name string) (*Group, error) {
 		return nil, err
 	}
 
-	return dbg.ToGroup(), nil
+	return dbg.toGroup(), nil
 }
 
-// ToGroup converts a dbGroup to a Group.
-func (dbg *dbGroup) ToGroup() *Group {
+// toGroup converts a dbGroup to a Group.
+func (dbg *dbGroup) toGroup() *Group {
 	return &Group{
-		ID:        dbg.ID,
+		GroupID:   dbg.GroupID,
 		Name:      dbg.Name,
 		OwnerID:   dbg.OwnerID,
 		CreatedAt: dbg.CreatedAt,

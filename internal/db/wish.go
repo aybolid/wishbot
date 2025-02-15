@@ -1,5 +1,7 @@
 package db
 
+import "github.com/aybolid/wishbot/internal/logger"
+
 type dbWish struct {
 	WishID      int64  `db:"wish_id"`
 	GroupID     int64  `db:"group_id"`
@@ -11,7 +13,7 @@ type dbWish struct {
 }
 
 type Wish struct {
-	ID          int64
+	WishID      int64
 	GroupID     int64
 	UserID      int64
 	URL         string
@@ -20,14 +22,37 @@ type Wish struct {
 	UpdatedAt   string
 }
 
-func CreateWish(url string, desc string, userId int64, groupId int64) (*Wish, error) {
+// GetGroupWishes retrieves all wishes for a given group.
+func GetGroupWishes(groupID int64) ([]*Wish, error) {
+	logger.Sugared.Infow("getting group wishes", "group_id", groupID)
+
+	var dbWishes []*dbWish
+
+	selectQuery := "SELECT * FROM wishes WHERE group_id = ?"
+	err := Database.Select(&dbWishes, selectQuery, groupID)
+	if err != nil {
+		return nil, err
+	}
+
+	wishes := make([]*Wish, len(dbWishes))
+	for idx, dbw := range dbWishes {
+		wishes[idx] = dbw.toWish()
+	}
+
+	return wishes, nil
+}
+
+// CreateWish creates a new wish for a given user and group.
+func CreateWish(url string, desc string, userID int64, groupID int64) (*Wish, error) {
+	logger.Sugared.Infow("creating wish", "url", url, "description", desc, "user_id", userID, "group_id", groupID)
+
 	tx, err := Database.Beginx()
 	if err != nil {
 		return nil, err
 	}
 
 	insertQuery := "INSERT INTO wishes (url, description, user_id, group_id) VALUES (?, ?, ?, ?)"
-	result, err := tx.Exec(insertQuery, url, desc, userId, groupId)
+	result, err := tx.Exec(insertQuery, url, desc, userID, groupID)
 	if err != nil {
 		tx.Rollback()
 		return nil, err
@@ -50,12 +75,12 @@ func CreateWish(url string, desc string, userId int64, groupId int64) (*Wish, er
 		return nil, err
 	}
 
-	return dbw.ToWish(), nil
+	return dbw.toWish(), nil
 }
 
-func (dbw *dbWish) ToWish() *Wish {
+func (dbw *dbWish) toWish() *Wish {
 	return &Wish{
-		ID:          dbw.WishID,
+		WishID:      dbw.WishID,
 		GroupID:     dbw.GroupID,
 		UserID:      dbw.UserID,
 		URL:         dbw.URL,

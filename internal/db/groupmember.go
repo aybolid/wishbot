@@ -28,7 +28,7 @@ func GetGroupMembers(groupID int64) ([]*GroupMember, error) {
 
 	members := make([]*GroupMember, len(dbMembers))
 	for i, dbm := range dbMembers {
-		members[i] = dbm.ToGroupMember()
+		members[i] = dbm.toGroupMember()
 	}
 
 	return members, nil
@@ -61,11 +61,10 @@ func CreateGroupMember(groupID int64, userID int64) (*GroupMember, error) {
 		return nil, err
 	}
 
-	return dbm.ToGroupMember(), nil
+	return dbm.toGroupMember(), nil
 }
 
-// ToGroupMember converts a dbGroupMember to a GroupMember.
-func (dbm *dbGroupMember) ToGroupMember() *GroupMember {
+func (dbm *dbGroupMember) toGroupMember() *GroupMember {
 	return &GroupMember{
 		GroupID:   dbm.GroupID,
 		UserID:    dbm.UserID,

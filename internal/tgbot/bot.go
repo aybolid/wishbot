@@ -32,11 +32,11 @@ func Init() {
 		return
 	}
 
-	botApi, err := tgbotapi.NewBotAPI(env.Vars.BotAPIKey)
+	api, err := tgbotapi.NewBotAPI(env.Vars.BotAPIKey)
 	if err != nil {
 		panic(err)
 	}
-	bot = &botAPI{BotAPI: *botApi}
+	bot = &botAPI{BotAPI: *api}
 
 	bot.Debug = env.Vars.Debug
 

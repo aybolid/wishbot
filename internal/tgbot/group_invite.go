@@ -17,13 +17,13 @@ const REJECT_INVITE_CALLBACK_PREFIX = "reject_invite:"
 type groupInvite struct {
 	invited *db.User
 	inviter *tgbotapi.User
-	groupId int64
+	groupID int64
 }
 
 func (i *groupInvite) sendInviteMessage() error {
 	logger.Sugared.Infow("sending group invite message", "from", i.inviter.ID, "to", i.invited.UserID, "chat_id", i.invited.ChatID)
 
-	group, err := db.GetGroup(i.groupId)
+	group, err := db.GetGroup(i.groupID)
 	if err != nil {
 		return err
 	}
@@ -39,8 +39,8 @@ func (i *groupInvite) sendInviteMessage() error {
 
 	markup := tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData("Reject", fmt.Sprintf("%s%d:%d", REJECT_INVITE_CALLBACK_PREFIX, i.inviter.ID, i.groupId)),
-			tgbotapi.NewInlineKeyboardButtonData("Accept", fmt.Sprintf("%s%d:%d", ACCEPT_INVITE_CALLBACK_PREFIX, i.inviter.ID, i.groupId)),
+			tgbotapi.NewInlineKeyboardButtonData("Reject", fmt.Sprintf("%s%d:%d", REJECT_INVITE_CALLBACK_PREFIX, i.inviter.ID, i.groupID)),
+			tgbotapi.NewInlineKeyboardButtonData("Accept", fmt.Sprintf("%s%d:%d", ACCEPT_INVITE_CALLBACK_PREFIX, i.inviter.ID, i.groupID)),
 		),
 	)
 
@@ -55,22 +55,22 @@ func (i *groupInvite) sendInviteMessage() error {
 	return err
 }
 
-func parseInviteCallbackQuery(callbackQuery *tgbotapi.CallbackQuery, prefix string) (inviterId int64, groupId int64, err error) {
+func parseInviteCallbackQuery(callbackQuery *tgbotapi.CallbackQuery, prefix string) (inviterID int64, groupID int64, err error) {
 	if !strings.HasPrefix(callbackQuery.Data, prefix) {
 		return 0, 0, fmt.Errorf("invalid invite callback query data")
 	}
 
 	parts := strings.Split(callbackQuery.Data[len(prefix):], ":")
 
-	inviterId, err = strconv.ParseInt(parts[0], 10, 64)
+	inviterID, err = strconv.ParseInt(parts[0], 10, 64)
 	if err != nil {
 		return 0, 0, err
 	}
 
-	groupId, err = strconv.ParseInt(parts[1], 10, 64)
+	groupID, err = strconv.ParseInt(parts[1], 10, 64)
 	if err != nil {
 		return 0, 0, err
 	}
 
-	return inviterId, groupId, nil
+	return inviterID, groupID, nil
 }

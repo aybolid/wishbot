@@ -13,10 +13,11 @@ import (
 type callbackHandler = func(*tgbotapi.CallbackQuery) error
 
 var callbackHandlers = map[string]callbackHandler{
-	INVITE_MEMBER_CALLBACK_PREFIX: handleInviteMemberCallback,
-	REJECT_INVITE_CALLBACK_PREFIX: handleRejectInviteCallback,
-	ACCEPT_INVITE_CALLBACK_PREFIX: handleAcceptInviteCallback,
-	ADD_WISH_CALLBACK_PREFIX:      handleAddWishCallback,
+	INVITE_MEMBER_CALLBACK_PREFIX:  handleInviteMemberCallback,
+	REJECT_INVITE_CALLBACK_PREFIX:  handleRejectInviteCallback,
+	ACCEPT_INVITE_CALLBACK_PREFIX:  handleAcceptInviteCallback,
+	ADD_WISH_CALLBACK_PREFIX:       handleAddWishCallback,
+	DISPLAY_WISHES_CALLBACK_PREFIX: handleDisplayWishesCallback,
 }
 
 func handleCallbackQuery(callbackQuery *tgbotapi.CallbackQuery) error {
@@ -55,15 +56,15 @@ func handleInviteMemberCallback(callbackQuery *tgbotapi.CallbackQuery) error {
 }
 
 func handleRejectInviteCallback(callbackQuery *tgbotapi.CallbackQuery) error {
-	inviterId, groupId, err := parseInviteCallbackQuery(callbackQuery, REJECT_INVITE_CALLBACK_PREFIX)
+	inviterID, groupID, err := parseInviteCallbackQuery(callbackQuery, REJECT_INVITE_CALLBACK_PREFIX)
 	if err != nil {
 		return err
 	}
-	inviter, err := db.GetUser(inviterId)
+	inviter, err := db.GetUser(inviterID)
 	if err != nil {
 		return err
 	}
-	group, err := db.GetGroup(groupId)
+	group, err := db.GetGroup(groupID)
 	if err != nil {
 		return err
 	}
@@ -88,20 +89,20 @@ func handleRejectInviteCallback(callbackQuery *tgbotapi.CallbackQuery) error {
 }
 
 func handleAcceptInviteCallback(callbackQuery *tgbotapi.CallbackQuery) error {
-	inviterId, groupId, err := parseInviteCallbackQuery(callbackQuery, ACCEPT_INVITE_CALLBACK_PREFIX)
+	inviterID, groupID, err := parseInviteCallbackQuery(callbackQuery, ACCEPT_INVITE_CALLBACK_PREFIX)
 	if err != nil {
 		return err
 	}
-	inviter, err := db.GetUser(inviterId)
+	inviter, err := db.GetUser(inviterID)
 	if err != nil {
 		return err
 	}
-	group, err := db.GetGroup(groupId)
+	group, err := db.GetGroup(groupID)
 	if err != nil {
 		return err
 	}
 
-	_, err = db.CreateGroupMember(group.ID, callbackQuery.From.ID)
+	_, err = db.CreateGroupMember(group.GroupID, callbackQuery.From.ID)
 	if err != nil {
 		return err
 	}
@@ -156,6 +157,84 @@ func handleAddWishCallback(callbackQuery *tgbotapi.CallbackQuery) error {
 	bot.HandledSend(deleteReq)
 
 	State.setPendingWishCreation(callbackQuery.From.ID, groupID)
+
+	return nil
+}
+
+func handleDisplayWishesCallback(callbackQuery *tgbotapi.CallbackQuery) error {
+	groupID, err := strconv.ParseInt(callbackQuery.Data[len(DISPLAY_WISHES_CALLBACK_PREFIX):], 10, 64)
+	if err != nil {
+		return err
+	}
+
+	group, err := db.GetGroup(groupID)
+	if err != nil {
+		return err
+	}
+
+	wishes, err := db.GetGroupWishes(group.GroupID)
+	if err != nil {
+		return err
+	}
+
+	if len(wishes) == 0 {
+		resp := tgbotapi.NewMessage(callbackQuery.Message.Chat.ID, "No wishes found for this group. /addwish")
+		bot.HandledSend(resp)
+		return nil
+	}
+
+	var groupedByUser = make(map[int64][]*db.Wish)
+	for _, wish := range wishes {
+		groupedByUser[wish.UserID] = append(groupedByUser[wish.UserID], wish)
+	}
+
+	resp := tgbotapi.NewMessage(
+		callbackQuery.Message.Chat.ID,
+		fmt.Sprintf(
+			"Here are wishes from the \"%s\" group!",
+			group.Name,
+		),
+	)
+	bot.HandledSend(resp)
+
+	deleteReq := tgbotapi.NewDeleteMessage(callbackQuery.Message.Chat.ID, callbackQuery.Message.MessageID)
+	bot.HandledSend(deleteReq)
+
+	for user, wishes := range groupedByUser {
+		go func() {
+			user, err := db.GetUser(user)
+			if err != nil {
+				logger.Sugared.Errorw("failed to get user for wishes display", "user_id", user, "err", err)
+				return
+			}
+
+			text := ""
+
+			if user.UserID == callbackQuery.From.ID {
+				text += "Your wishes:\n\n"
+			} else {
+				text += fmt.Sprintf(
+					"@%s wishes:\n\n",
+					user.Username,
+				)
+			}
+
+			for idx, wish := range wishes {
+				text += fmt.Sprintf(
+					"%d. %s\n%s\n\n",
+					idx+1,
+					wish.URL,
+					wish.Description,
+				)
+			}
+
+			resp := tgbotapi.NewMessage(
+				callbackQuery.Message.Chat.ID,
+				text,
+			)
+			bot.HandledSend(resp)
+		}()
+	}
 
 	return nil
 }
