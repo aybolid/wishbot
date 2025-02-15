@@ -80,27 +80,33 @@ func handleAddMember(cmdMsg *tgbotapi.Message) error {
 		return err
 	}
 
-	if len(groups) == 0 {
-		resp := tgbotapi.NewMessage(cmdMsg.Chat.ID, "You don't have any created groups yet. Please create one first.")
+	switch len(groups) {
+	case 0:
+		resp := tgbotapi.NewMessage(cmdMsg.Chat.ID, "You don't have any created groups yet. Please create one first. /creategroup")
+		bot.HandledSend(resp)
+		return nil
+
+	case 1:
+		group := groups[0]
+
+		State.setPendingInviteCreation(cmdMsg.From.ID, group.ID)
+
+		resp := tgbotapi.NewMessage(cmdMsg.Chat.ID, fmt.Sprintf("Please mention the users you want to invite to the \"%s\" group.", group.Name))
+		bot.HandledSend(resp)
+
+		return nil
+
+	default:
+		resp := tgbotapi.NewMessage(cmdMsg.Chat.ID, "<b>Invite another member.</b>\n\nSelect a group to add a member to (you can add members only to groups you created).")
+
+		resp.ReplyMarkup = getGroupSelectKeyboard(groups, func(group *db.Group) string {
+			return fmt.Sprintf("%s%d", INVITE_MEMBER_CALLBACK_PREFIX, group.ID)
+		})
+		resp.ParseMode = tgbotapi.ModeHTML
+
 		bot.HandledSend(resp)
 		return nil
 	}
-
-	resp := tgbotapi.NewMessage(cmdMsg.Chat.ID, "<b>Invite another member.</b>\n\nSelect a group to add a member to (you can add members only to groups you created).")
-
-	var buttons []tgbotapi.InlineKeyboardButton
-	for _, group := range groups {
-		buttons = append(buttons, tgbotapi.NewInlineKeyboardButtonData(group.Name, fmt.Sprintf("%s%d", INVITE_MEMBER_CALLBACK_PREFIX, group.ID)))
-	}
-
-	markup := tgbotapi.NewInlineKeyboardMarkup(buttons)
-
-	resp.ReplyMarkup = markup
-	resp.ParseMode = tgbotapi.ModeHTML
-
-	bot.HandledSend(resp)
-
-	return nil
 }
 
 const ADD_WISH_CALLBACK_PREFIX = "add_wish:"
@@ -111,28 +117,58 @@ func handleAddWish(cmdMsg *tgbotapi.Message) error {
 		return err
 	}
 
-	if len(groups) == 0 {
+	switch len(groups) {
+	case 0:
 		resp := tgbotapi.NewMessage(cmdMsg.Chat.ID, "You don't have any groups yet. Please create or join one first.")
 		bot.HandledSend(resp)
 		return nil
+
+	case 1:
+		group := groups[0]
+
+		resp := tgbotapi.NewMessage(
+			cmdMsg.Chat.ID,
+			fmt.Sprintf(
+				"Ok! Lets add a wish to the \"%s\" group.",
+				group.Name,
+			),
+		)
+		bot.HandledSend(resp)
+
+		resp = tgbotapi.NewMessage(
+			cmdMsg.Chat.ID,
+			"Please send the URL of the wish you want to add with some description if applicable\\.\n\nExample:\n>>https://example\\.com\n>>This is a description",
+		)
+		resp.ParseMode = tgbotapi.ModeMarkdownV2
+		bot.HandledSend(resp)
+
+		State.setPendingWishCreation(cmdMsg.From.ID, group.ID)
+
+		return nil
+
+	default:
+		resp := tgbotapi.NewMessage(
+			cmdMsg.Chat.ID,
+			"<b>Add new wish.</b>\n\nSelect a group to add a wish to. Created wish will be shared with all members of the group.",
+		)
+
+		resp.ReplyMarkup = getGroupSelectKeyboard(groups, func(group *db.Group) string {
+			return fmt.Sprintf("%s%d", ADD_WISH_CALLBACK_PREFIX, group.ID)
+		})
+		resp.ParseMode = tgbotapi.ModeHTML
+
+		bot.HandledSend(resp)
+
+		return nil
 	}
+}
 
-	resp := tgbotapi.NewMessage(
-		cmdMsg.Chat.ID,
-		"<b>Add new wish.</b>\n\nSelect a group to add a wish to. Created wish will be shared with all members of the group.",
-	)
-
+func getGroupSelectKeyboard(groups []*db.Group, dataFn func(*db.Group) string) tgbotapi.InlineKeyboardMarkup {
 	var buttons []tgbotapi.InlineKeyboardButton
+
 	for _, group := range groups {
-		buttons = append(buttons, tgbotapi.NewInlineKeyboardButtonData(group.Name, fmt.Sprintf("%s%d", ADD_WISH_CALLBACK_PREFIX, group.ID)))
+		buttons = append(buttons, tgbotapi.NewInlineKeyboardButtonData(group.Name, dataFn(group)))
 	}
 
-	markup := tgbotapi.NewInlineKeyboardMarkup(buttons)
-
-	resp.ReplyMarkup = markup
-	resp.ParseMode = tgbotapi.ModeHTML
-
-	bot.HandledSend(resp)
-
-	return nil
+	return tgbotapi.NewInlineKeyboardMarkup(buttons)
 }
