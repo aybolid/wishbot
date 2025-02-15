@@ -1,11 +1,6 @@
 package main
 
 import (
-	"bufio"
-	"fmt"
-	"os"
-	"strings"
-
 	"github.com/aybolid/wishbot/internal/db"
 	"github.com/aybolid/wishbot/internal/env"
 	"github.com/aybolid/wishbot/internal/logger"
@@ -22,36 +17,5 @@ func init() {
 }
 
 func main() {
-	cancel := tgbot.ListenToUpdates()
-	defer cancel()
-
-	if !env.Vars.Debug {
-		select {} // block forever in release mode
-	}
-
-	// simple repl for debugging only
-	reader := bufio.NewReader(os.Stdin)
-	for {
-		cmd, err := reader.ReadString('\n')
-		if err != nil {
-			panic(err)
-		}
-		cmd = strings.TrimSpace(cmd)
-
-		switch cmd {
-		case "exit":
-			os.Exit(0)
-		case "state":
-			fmt.Println("Pending group creation")
-			for userID, pending := range tgbot.State.PendingGroupCreation {
-				fmt.Printf("\t%d: %t\n", userID, pending)
-			}
-			fmt.Println("Pending invite creation")
-			for userID, pending := range tgbot.State.PendingInviteCreation {
-				fmt.Printf("\t%d: %d\n", userID, pending)
-			}
-		default:
-			fmt.Printf("%s: unknown command\n", cmd)
-		}
-	}
+	tgbot.ListenToUpdates()
 }

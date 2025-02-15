@@ -1,11 +1,15 @@
 package db
 
 import (
-	"github.com/aybolid/wishbot/internal/env"
+	"os"
+
 	"github.com/aybolid/wishbot/internal/logger"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/mattn/go-sqlite3"
 )
+
+const DB_DIR = "data"
+const DB_FILE = "wishbot.db"
 
 var Database *sqlx.DB
 
@@ -13,7 +17,13 @@ var Database *sqlx.DB
 func Init() {
 	var err error
 
-	Database, err = sqlx.Open("sqlite3", env.Vars.DBPath)
+	if _, err := os.Stat(DB_DIR); os.IsNotExist(err) {
+		os.Mkdir(DB_DIR, 0755)
+	}
+
+	dbPath := DB_DIR + "/" + DB_FILE
+
+	Database, err = sqlx.Open("sqlite3", dbPath)
 	if err != nil {
 		panic(err)
 	}
@@ -22,7 +32,7 @@ func Init() {
 		panic(err)
 	}
 
-	logger.Sugared.Infow("connected to database", "path", env.Vars.DBPath)
+	logger.Sugared.Infow("connected to database", "path", dbPath)
 
 	runStartupMigrations()
 }

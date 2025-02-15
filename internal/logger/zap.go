@@ -1,11 +1,14 @@
 package logger
 
 import (
+	"os"
+	"time"
+
 	"github.com/aybolid/wishbot/internal/env"
 	"go.uber.org/zap"
 )
 
-const PROD_OUTPUT_PATH = "logs.json"
+const LOGS_DIR = "logs"
 
 var Sugared *zap.SugaredLogger
 
@@ -20,7 +23,7 @@ func Init() {
 	var err error
 	var logger *zap.Logger
 
-	if env.Vars.Debug {
+	if env.Vars.Mode == "dev" {
 		logger, err = zap.NewDevelopment()
 	} else {
 		logger, err = newProdLogger()
@@ -36,8 +39,13 @@ func Init() {
 
 func newProdLogger() (*zap.Logger, error) {
 	cfg := zap.NewProductionConfig()
+
+	if _, err := os.Stat(LOGS_DIR); os.IsNotExist(err) {
+		os.Mkdir(LOGS_DIR, 0755)
+	}
+
 	cfg.OutputPaths = []string{
-		PROD_OUTPUT_PATH,
+		LOGS_DIR + "/" + time.Now().Format("2006-01-02") + ".log",
 	}
 	return cfg.Build()
 }

@@ -2,17 +2,13 @@ package env
 
 import (
 	"os"
-
-	"github.com/joho/godotenv"
 )
 
 type vars struct {
-	// Enables debug mode.
-	Debug bool
+	// Running mode (dev or prod).
+	Mode string
 	// Telegram bot API key.
 	BotAPIKey string
-	// Path to the SQLite database.
-	DBPath string
 }
 
 var Vars *vars
@@ -27,22 +23,15 @@ func Init() {
 		return
 	}
 
-	err := godotenv.Load()
-	if err != nil {
-		panic(err)
-	}
-
 	Vars = &vars{}
 
-	Vars.Debug = os.Getenv("DEBUG") == "true"
+	Vars.Mode = os.Getenv("MODE")
+	if Vars.Mode != "dev" && Vars.Mode != "prod" {
+		Vars.Mode = "prod"
+	}
 
 	Vars.BotAPIKey = os.Getenv("BOT_API_KEY")
 	if Vars.BotAPIKey == "" {
 		panic("BOT_API_KEY is not set")
-	}
-
-	Vars.DBPath = os.Getenv("DB_PATH")
-	if Vars.DBPath == "" {
-		panic("DB_PATH is not set")
 	}
 }

@@ -1,8 +1,6 @@
 package tgbot
 
 import (
-	"context"
-
 	"github.com/aybolid/wishbot/internal/env"
 	"github.com/aybolid/wishbot/internal/logger"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
@@ -38,38 +36,20 @@ func Init() {
 	}
 	bot = &botAPI{BotAPI: *api}
 
-	bot.Debug = env.Vars.Debug
+	bot.Debug = env.Vars.Mode == "dev"
 
 	logger.Sugared.Infow("telegram bot initialized", "name", bot.Self.UserName)
 }
 
 // Listens to incoming Telegram updates.
-//
-// This function spawns a goroutine that listens to incoming updates and
-// calls the appropriate handler. The returned cancel function can be used
-// to stop the goroutine.
-func ListenToUpdates() context.CancelFunc {
+func ListenToUpdates() {
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 60
 
-	ctx := context.Background()
-	ctx, cancel := context.WithCancel(ctx)
-
 	updates := bot.GetUpdatesChan(u)
 
-	go receiveUpdates(ctx, updates)
-
-	return cancel
-}
-
-func receiveUpdates(ctx context.Context, updates tgbotapi.UpdatesChannel) {
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case update := <-updates:
-			handleUpdate(update)
-		}
+	for update := range updates {
+		handleUpdate(update)
 	}
 }
 

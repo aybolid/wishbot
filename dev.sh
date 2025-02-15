@@ -1,0 +1,1 @@
+env MODE=dev $(cat .env | xargs) go run main.go

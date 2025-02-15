@@ -1,0 +1,14 @@
+services:
+  wishbot:
+    image: wishbot
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    environment:
+      - MODE=prod
+    volumes:
+      - ./logs:/app/logs
+      - ./data:/app/data
+    command: ["/app/wishbot"]
