@@ -119,7 +119,7 @@ func handleManageMembersCallback(callbackQuery *tgbotapi.CallbackQuery) error {
 	}
 
 	if len(filteredMembers) == 0 {
-		resp := tgbotapi.NewMessage(callbackQuery.Message.Chat.ID, "No members to manage found for this group.")
+		resp := tgbotapi.NewMessage(callbackQuery.Message.Chat.ID, fmt.Sprintf("No members to manage found for the \"%s\" group.", group.Name))
 		bot.HandledSend(resp)
 		return nil
 	}

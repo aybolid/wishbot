@@ -2,6 +2,7 @@ package tgbot
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/aybolid/wishbot/internal/db"
 	"github.com/aybolid/wishbot/internal/logger"
@@ -61,7 +62,7 @@ func handleManageMembers(cmdMsg *tgbotapi.Message) error {
 
 		if group.OwnerID != cmdMsg.From.ID {
 			logger.Sugared.Errorw("not the owner of the group", "group_id", group.GroupID, "owner_id", group.OwnerID, "user_id", cmdMsg.From.ID)
-			resp := tgbotapi.NewMessage(cmdMsg.Chat.ID, "You are not the owner of this group.")
+			resp := tgbotapi.NewMessage(cmdMsg.Chat.ID, fmt.Sprintf("You are not the owner of the \"%s\" group.", group.Name))
 			bot.HandledSend(resp)
 			return nil
 		}
@@ -80,7 +81,7 @@ func handleManageMembers(cmdMsg *tgbotapi.Message) error {
 		}
 
 		if len(filteredMembers) == 0 {
-			resp := tgbotapi.NewMessage(cmdMsg.Chat.ID, "No members to manage found for this group.")
+			resp := tgbotapi.NewMessage(cmdMsg.Chat.ID, fmt.Sprintf("No members to manage found for the \"%s\" group.", group.Name))
 			bot.HandledSend(resp)
 			return nil
 		}
@@ -309,12 +310,58 @@ func handleMyGroups(cmdMsg *tgbotapi.Message) error {
 		return err
 	}
 
-	for _, group := range groups {
-		resp := tgbotapi.NewMessage(cmdMsg.Chat.ID, fmt.Sprintf("Group: %s", group.Name))
+	switch len(groups) {
+	case 0:
+		resp := tgbotapi.NewMessage(cmdMsg.Chat.ID, "You don't have any groups yet. Please create or join one first. /creategroup")
 		bot.HandledSend(resp)
-	}
+		return nil
 
-	return nil
+	default:
+		resp := tgbotapi.NewMessage(cmdMsg.Chat.ID, "Here are your groups:")
+		bot.HandledSend(resp)
+
+		for _, group := range groups {
+			go func() {
+				members, err := db.GetGroupMembers(group.GroupID)
+				if err != nil {
+					logger.Sugared.Errorw("failed to get group members", "group_id", group.GroupID, "err", err)
+					return
+				}
+				users := make([]*db.User, 0)
+				for _, member := range members {
+					user, err := db.GetUser(member.UserID)
+					if err != nil {
+						logger.Sugared.Errorw("failed to get user", "user_id", member.UserID, "err", err)
+						return
+					}
+					users = append(users, user)
+				}
+
+				usernames := make([]string, len(users))
+				for idx, user := range users {
+					usernames[idx] = "@" + user.Username
+					if user.UserID == group.OwnerID {
+						usernames[idx] += " (owner)"
+					}
+				}
+
+				resp := tgbotapi.NewMessage(
+					cmdMsg.Chat.ID,
+					fmt.Sprintf(
+						"<b>%s</b>\n\nThe group has %d members.\n%s",
+						group.Name,
+						len(users),
+						strings.Join(usernames, ", "),
+					),
+				)
+
+				resp.ParseMode = tgbotapi.ModeHTML
+				bot.HandledSend(resp)
+			}()
+		}
+
+		return nil
+	}
 }
 
 func handleAddMember(cmdMsg *tgbotapi.Message) error {
@@ -429,7 +476,7 @@ func handleWishes(cmdMsg *tgbotapi.Message) error {
 		}
 
 		if len(wishes) == 0 {
-			resp := tgbotapi.NewMessage(cmdMsg.Chat.ID, "No wishes found for this group. /addwish")
+			resp := tgbotapi.NewMessage(cmdMsg.Chat.ID, fmt.Sprintf("No wishes found for the \"%s\" group. /addwish", group.Name))
 			bot.HandledSend(resp)
 			return nil
 		}
