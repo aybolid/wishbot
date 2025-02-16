@@ -42,6 +42,7 @@ func handleCommand(cmdMsg *tgbotapi.Message) error {
 }
 
 const DELETE_WISH_CALLBACK_PREFIX = "delete_wish:"
+const MANAGE_WISHES_CALLBACK_PREFIX = "manage_wishes:"
 
 func handleManageWishes(cmdMsg *tgbotapi.Message) error {
 	groups, err := db.GetUserGroups(cmdMsg.From.ID)
@@ -104,6 +105,15 @@ func handleManageWishes(cmdMsg *tgbotapi.Message) error {
 		return nil
 
 	default:
+		resp := tgbotapi.NewMessage(cmdMsg.Chat.ID, "<b>Manage wishes</b>\n\nSelect a group to manage wishes for.")
+
+		resp.ReplyMarkup = getGroupSelectKeyboard(groups, func(group *db.Group) string {
+			return fmt.Sprintf("%s%d", MANAGE_WISHES_CALLBACK_PREFIX, group.GroupID)
+		})
+		resp.ParseMode = tgbotapi.ModeHTML
+
+		bot.HandledSend(resp)
+
 		return nil
 	}
 }
@@ -153,6 +163,7 @@ func handleLeaveGroup(cmdMsg *tgbotapi.Message) error {
 		resp.ParseMode = tgbotapi.ModeHTML
 
 		bot.HandledSend(resp)
+
 		return nil
 	}
 }
@@ -235,6 +246,7 @@ func handleAddMember(cmdMsg *tgbotapi.Message) error {
 		resp.ParseMode = tgbotapi.ModeHTML
 
 		bot.HandledSend(resp)
+
 		return nil
 	}
 }

@@ -15,9 +15,6 @@ var Vars *vars
 
 // Loads environment variables from .env file (using joho/godotenv)
 // and sets up the global VARS variable.
-//
-// Panics if the .env file is not found or if any of the required
-// environment variables are not set.
 func Init() {
 	if Vars != nil {
 		return

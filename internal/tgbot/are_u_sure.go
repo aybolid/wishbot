@@ -90,7 +90,7 @@ func handleDeleteWish(dataOffset int, callbackQuery *tgbotapi.CallbackQuery) err
 		return err
 	}
 
-	resp := tgbotapi.NewMessage(callbackQuery.Message.Chat.ID, fmt.Sprintf("Wish deleted."))
+	resp := tgbotapi.NewMessage(callbackQuery.Message.Chat.ID, "Wish deleted.")
 	bot.HandledSend(resp)
 
 	return nil

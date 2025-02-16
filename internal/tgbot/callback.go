@@ -22,6 +22,7 @@ var callbackHandlers = map[string]callbackHandler{
 	ARE_YOU_SURE_NO_CALLBACK_PREFIX:  handleNo,
 	ARE_YOU_SURE_YES_CALLBACK_PREFIX: handleYes,
 	DELETE_WISH_CALLBACK_PREFIX:      handleDeleteWishCallback,
+	MANAGE_WISHES_CALLBACK_PREFIX:    handleManageWishesCallback,
 }
 
 func handleCallbackQuery(callbackQuery *tgbotapi.CallbackQuery) error {
@@ -41,6 +42,62 @@ func handleCallbackQuery(callbackQuery *tgbotapi.CallbackQuery) error {
 		return handler(callbackQuery)
 	}
 	logger.Sugared.Errorw("no callback handler for prefix", "prefix", prefix)
+
+	return nil
+}
+
+func handleManageWishesCallback(callbackQuery *tgbotapi.CallbackQuery) error {
+	groupID, err := strconv.ParseInt(callbackQuery.Data[len(MANAGE_WISHES_CALLBACK_PREFIX):], 10, 64)
+	if err != nil {
+		return err
+	}
+
+	group, err := db.GetGroup(groupID)
+	if err != nil {
+		return err
+	}
+	wishes, err := db.GetUserWishes(callbackQuery.From.ID, groupID)
+	if err != nil {
+		return err
+	}
+
+	if len(wishes) == 0 {
+		resp := tgbotapi.NewMessage(
+			callbackQuery.Message.Chat.ID, fmt.Sprintf("No wishes found for the \"%s\" group. /addwish", group.Name),
+		)
+		bot.HandledSend(resp)
+		return nil
+	}
+
+	resp := tgbotapi.NewMessage(
+		callbackQuery.Message.Chat.ID,
+		fmt.Sprintf(
+			"Here are your wishes from the \"%s\" group.",
+			group.Name,
+		),
+	)
+	bot.HandledSend(resp)
+
+	for _, wish := range wishes {
+		go func() {
+			msg := tgbotapi.NewMessage(
+				callbackQuery.Message.Chat.ID,
+				fmt.Sprintf(
+					"%s\n%s\n\n",
+					wish.URL,
+					wish.Description,
+				),
+			)
+
+			msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
+				tgbotapi.NewInlineKeyboardRow(
+					tgbotapi.NewInlineKeyboardButtonData("Delete", fmt.Sprintf("%s%d", DELETE_WISH_CALLBACK_PREFIX, wish.WishID)),
+				),
+			)
+
+			bot.HandledSend(msg)
+		}()
+	}
 
 	return nil
 }
