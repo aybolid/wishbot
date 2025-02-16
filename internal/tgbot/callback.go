@@ -21,6 +21,7 @@ var callbackHandlers = map[string]callbackHandler{
 	LEAVE_GROUP_CALLBACK_PREFIX:      handleLeaveGroupCallback,
 	ARE_YOU_SURE_NO_CALLBACK_PREFIX:  handleNo,
 	ARE_YOU_SURE_YES_CALLBACK_PREFIX: handleYes,
+	DELETE_WISH_CALLBACK_PREFIX:      handleDeleteWishCallback,
 }
 
 func handleCallbackQuery(callbackQuery *tgbotapi.CallbackQuery) error {
@@ -40,6 +41,33 @@ func handleCallbackQuery(callbackQuery *tgbotapi.CallbackQuery) error {
 		return handler(callbackQuery)
 	}
 	logger.Sugared.Errorw("no callback handler for prefix", "prefix", prefix)
+
+	return nil
+}
+
+func handleDeleteWishCallback(callbackQuery *tgbotapi.CallbackQuery) error {
+	wishId, err := strconv.ParseInt(callbackQuery.Data[len(DELETE_WISH_CALLBACK_PREFIX):], 10, 64)
+	if err != nil {
+		return err
+	}
+
+	wish, err := db.GetWish(wishId)
+	if err != nil {
+		return err
+	}
+
+	wishText := fmt.Sprintf(
+		"%s\n%s",
+		wish.URL,
+		wish.Description,
+	)
+
+	sendAreYouSure(&areYouSureConfig{
+		chatID:       callbackQuery.Message.Chat.ID,
+		message:      fmt.Sprintf("Are you sure you want to delete this wish?\n\n%s", wishText),
+		actionID:     DELETE_WISH_ACTION,
+		callbackData: fmt.Sprintf("%d", wish.WishID),
+	})
 
 	return nil
 }

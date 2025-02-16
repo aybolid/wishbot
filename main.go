@@ -10,9 +10,7 @@ import (
 func init() {
 	env.Init()
 	logger.Init()
-
 	db.Init()
-
 	tgbot.Init()
 }
 

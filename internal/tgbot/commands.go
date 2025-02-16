@@ -19,8 +19,9 @@ var cmdHandlers = map[string]cmdHandler{
 
 	"/addmember": handleAddMember,
 
-	"/addwish": handleAddWish,
-	"/wishes":  handleWishes,
+	"/addwish":      handleAddWish,
+	"/wishes":       handleWishes,
+	"/managewishes": handleManageWishes,
 
 	"/cancel": handleCancel,
 }
@@ -38,6 +39,73 @@ func handleCommand(cmdMsg *tgbotapi.Message) error {
 	}
 
 	return err
+}
+
+const DELETE_WISH_CALLBACK_PREFIX = "delete_wish:"
+
+func handleManageWishes(cmdMsg *tgbotapi.Message) error {
+	groups, err := db.GetUserGroups(cmdMsg.From.ID)
+	if err != nil {
+		return err
+	}
+
+	switch len(groups) {
+	case 0:
+		resp := tgbotapi.NewMessage(cmdMsg.Chat.ID, "You don't have any groups yet. Please create or join one first. /creategroup")
+		bot.HandledSend(resp)
+		return nil
+
+	case 1:
+		group := groups[0]
+
+		wishes, err := db.GetGroupWishes(group.GroupID)
+		if err != nil {
+			return err
+		}
+
+		if len(wishes) == 0 {
+			resp := tgbotapi.NewMessage(
+				cmdMsg.Chat.ID, fmt.Sprintf("No wishes found for the \"%s\" group. /addwish", group.Name),
+			)
+			bot.HandledSend(resp)
+			return nil
+		}
+
+		resp := tgbotapi.NewMessage(
+			cmdMsg.Chat.ID,
+			fmt.Sprintf(
+				"Here are your wishes from the \"%s\" group.",
+				group.Name,
+			),
+		)
+		bot.HandledSend(resp)
+
+		for _, wish := range wishes {
+			go func() {
+				msg := tgbotapi.NewMessage(
+					cmdMsg.Chat.ID,
+					fmt.Sprintf(
+						"%s\n%s\n\n",
+						wish.URL,
+						wish.Description,
+					),
+				)
+
+				msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
+					tgbotapi.NewInlineKeyboardRow(
+						tgbotapi.NewInlineKeyboardButtonData("Delete", fmt.Sprintf("%s%d", DELETE_WISH_CALLBACK_PREFIX, wish.WishID)),
+					),
+				)
+
+				bot.HandledSend(msg)
+			}()
+		}
+
+		return nil
+
+	default:
+		return nil
+	}
 }
 
 const LEAVE_GROUP_CALLBACK_PREFIX = "leave_group:"

@@ -3,6 +3,7 @@ package db
 import "github.com/aybolid/wishbot/internal/logger"
 
 type dbGroupMember struct {
+	MemberID  int64  `db:"member_id"`
 	GroupID   int64  `db:"group_id"`
 	UserID    int64  `db:"user_id"`
 	CreatedAt string `db:"created_at"`
@@ -10,6 +11,7 @@ type dbGroupMember struct {
 }
 
 type GroupMember struct {
+	MemberID  int64
 	GroupID   int64
 	UserID    int64
 	CreatedAt string
@@ -32,6 +34,20 @@ func GetGroupMembers(groupID int64) ([]*GroupMember, error) {
 	}
 
 	return members, nil
+}
+
+// GetGroupMember retrieves a group member by group id and user id.
+func GetGroupMember(groupID int64, userID int64) (*GroupMember, error) {
+	logger.Sugared.Infow("getting group member", "group_id", groupID, "user_id", userID)
+
+	var dbMember dbGroupMember
+
+	query := "SELECT * FROM group_members WHERE group_id = ? AND user_id = ?"
+	if err := Database.Get(&dbMember, query, groupID, userID); err != nil {
+		return nil, err
+	}
+
+	return dbMember.toGroupMember(), nil
 }
 
 // CreateGroupMember inserts a new member into a group and returns the inserted row.
@@ -85,13 +101,9 @@ func DeleteGroupMember(groupID int64, userID int64) error {
 			return err
 		}
 	} else {
+		// deleting a member should delete all associated wishes
 		deleteMemberQuery := "DELETE FROM group_members WHERE group_id = ? AND user_id = ?"
 		if _, err := tx.Exec(deleteMemberQuery, groupID, userID); err != nil {
-			tx.Rollback()
-			return err
-		}
-		deleteWishesQuery := "DELETE FROM wishes WHERE group_id = ? AND user_id = ?"
-		if _, err := tx.Exec(deleteWishesQuery, groupID, userID); err != nil {
 			tx.Rollback()
 			return err
 		}
@@ -106,6 +118,7 @@ func DeleteGroupMember(groupID int64, userID int64) error {
 
 func (dbm *dbGroupMember) toGroupMember() *GroupMember {
 	return &GroupMember{
+		MemberID:  dbm.MemberID,
 		GroupID:   dbm.GroupID,
 		UserID:    dbm.UserID,
 		CreatedAt: dbm.CreatedAt,

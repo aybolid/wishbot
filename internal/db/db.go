@@ -56,30 +56,36 @@ CREATE TABLE IF NOT EXISTS groups (
     owner_id INTEGER NOT NULL,
     name TEXT NOT NULL,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+	FOREIGN KEY(owner_id) REFERENCES users(user_id) ON DELETE CASCADE
 );
 
 -- Group members table with a foreign key relation to groups.
 CREATE TABLE IF NOT EXISTS group_members (
+	member_id INTEGER PRIMARY KEY AUTOINCREMENT,
     group_id INTEGER NOT NULL,
     user_id INTEGER NOT NULL,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now')),
-    PRIMARY KEY (group_id, user_id),
-    FOREIGN KEY(group_id) REFERENCES groups(group_id) ON DELETE CASCADE
+    FOREIGN KEY(group_id) REFERENCES groups(group_id) ON DELETE CASCADE,
+	FOREIGN KEY(user_id) REFERENCES users(user_id) ON DELETE CASCADE
 );
+
+CREATE UNIQUE INDEX IF NOT EXISTS group_members_unique_idx ON group_members (group_id, user_id);
 
 -- Wishes table.
 CREATE TABLE IF NOT EXISTS wishes (
     wish_id INTEGER PRIMARY KEY AUTOINCREMENT,
     group_id INTEGER NOT NULL,
     user_id INTEGER NOT NULL,
+	member_id INTEGER NOT NULL,
 	url TEXT NOT NULL,
 	description TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now')),
     FOREIGN KEY(group_id) REFERENCES groups(group_id) ON DELETE CASCADE,
-    FOREIGN KEY(user_id) REFERENCES users(user_id) ON DELETE CASCADE
+    FOREIGN KEY(user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+	FOREIGN KEY(member_id) REFERENCES group_members(member_id) ON DELETE CASCADE
 );
 `
 

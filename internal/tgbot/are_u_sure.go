@@ -15,6 +15,7 @@ const ARE_YOU_SURE_NO_CALLBACK_PREFIX = "suren:"
 
 const (
 	LEAVE_GROUP_ACTION = iota
+	DELETE_WISH_ACTION
 )
 
 type areYouSureConfig struct {
@@ -28,6 +29,7 @@ type actionHandler = func(int, *tgbotapi.CallbackQuery) error
 
 var actionHandlers = map[int]actionHandler{
 	LEAVE_GROUP_ACTION: handleGroupLeave,
+	DELETE_WISH_ACTION: handleDeleteWish,
 }
 
 func sendAreYouSure(config *areYouSureConfig) error {
@@ -73,6 +75,23 @@ func handleYes(callbackQuery *tgbotapi.CallbackQuery) error {
 	} else {
 		logger.Sugared.Errorw("no action handler for action id", "action_id", actionID)
 	}
+
+	return nil
+}
+
+func handleDeleteWish(dataOffset int, callbackQuery *tgbotapi.CallbackQuery) error {
+	wishID, err := strconv.ParseInt(callbackQuery.Data[dataOffset:], 10, 64)
+	if err != nil {
+		return err
+	}
+
+	err = db.DeleteWish(wishID)
+	if err != nil {
+		return err
+	}
+
+	resp := tgbotapi.NewMessage(callbackQuery.Message.Chat.ID, fmt.Sprintf("Wish deleted."))
+	bot.HandledSend(resp)
 
 	return nil
 }
