@@ -23,6 +23,8 @@ var callbackHandlers = map[string]callbackHandler{
 	ARE_YOU_SURE_YES_CALLBACK_PREFIX: handleYes,
 	DELETE_WISH_CALLBACK_PREFIX:      handleDeleteWishCallback,
 	MANAGE_WISHES_CALLBACK_PREFIX:    handleManageWishesCallback,
+	MANAGE_MEMBERS_CALLBACK_PREFIX:   handleManageMembersCallback,
+	KICK_MEMBER_CALLBACK_PREFIX:      handleKickMemberCallback,
 }
 
 func handleCallbackQuery(callbackQuery *tgbotapi.CallbackQuery) error {
@@ -42,6 +44,127 @@ func handleCallbackQuery(callbackQuery *tgbotapi.CallbackQuery) error {
 		return handler(callbackQuery)
 	}
 	logger.Sugared.Errorw("no callback handler for prefix", "prefix", prefix)
+
+	return nil
+}
+
+func handleKickMemberCallback(callbackQuery *tgbotapi.CallbackQuery) error {
+	payload := strings.Split(callbackQuery.Data[len(KICK_MEMBER_CALLBACK_PREFIX):], ":")
+	logger.Sugared.Debugw("kick member payload", "payload", payload)
+
+	userID, err := strconv.ParseInt(payload[0], 10, 64)
+	if err != nil {
+		return err
+	}
+	groupID, err := strconv.ParseInt(payload[1], 10, 64)
+	if err != nil {
+		return err
+	}
+
+	member, err := db.GetGroupMember(groupID, userID)
+	if err != nil {
+		return err
+	}
+	user, err := db.GetUser(member.UserID)
+	if err != nil {
+		return err
+	}
+	group, err := db.GetGroup(groupID)
+	if err != nil {
+		return err
+	}
+
+	err = sendAreYouSure(
+		&areYouSureConfig{
+			chatID:       callbackQuery.Message.Chat.ID,
+			message:      fmt.Sprintf("Are you sure you want to kick @%s from the \"%s\" group?", user.Username, group.Name),
+			actionID:     KICK_MEMBER_ACTION,
+			callbackData: fmt.Sprintf("%d:%d", user.UserID, groupID),
+		},
+	)
+
+	return err
+}
+
+const KICK_MEMBER_CALLBACK_PREFIX = "kick_member:"
+
+func handleManageMembersCallback(callbackQuery *tgbotapi.CallbackQuery) error {
+	groupID, err := strconv.ParseInt(callbackQuery.Data[len(MANAGE_MEMBERS_CALLBACK_PREFIX):], 10, 64)
+	if err != nil {
+		return err
+	}
+
+	group, err := db.GetGroup(groupID)
+	if err != nil {
+		return err
+	}
+	if group.OwnerID != callbackQuery.From.ID {
+		logger.Sugared.Errorw("not the owner of the group", "group_id", groupID, "owner_id", group.OwnerID, "user_id", callbackQuery.From.ID)
+		resp := tgbotapi.NewMessage(callbackQuery.Message.Chat.ID, "You are not the owner of this group.")
+		bot.HandledSend(resp)
+		return nil
+	}
+
+	members, err := db.GetGroupMembers(groupID)
+	if err != nil {
+		return err
+	}
+
+	filteredMembers := make([]*db.GroupMember, 0)
+	for _, member := range members {
+		if member.UserID == callbackQuery.From.ID {
+			continue
+		}
+		filteredMembers = append(filteredMembers, member)
+	}
+
+	if len(filteredMembers) == 0 {
+		resp := tgbotapi.NewMessage(callbackQuery.Message.Chat.ID, "No members to manage found for this group.")
+		bot.HandledSend(resp)
+		return nil
+	}
+
+	resp := tgbotapi.NewMessage(
+		callbackQuery.Message.Chat.ID,
+		fmt.Sprintf(
+			"Here are the members of the \"%s\" group.",
+			group.Name,
+		),
+	)
+	bot.HandledSend(resp)
+
+	for _, member := range filteredMembers {
+		go func() {
+			user, err := db.GetUser(member.UserID)
+			if err != nil {
+				logger.Sugared.Errorw("failed to get user for member display", "user_id", member.UserID, "err", err)
+				return
+			}
+
+			userWishes, err := db.GetUserWishes(member.UserID, groupID)
+			if err != nil {
+				logger.Sugared.Errorw("failed to get user wishes for member display", "user_id", member.UserID, "err", err)
+				return
+			}
+
+			msg := tgbotapi.NewMessage(
+				callbackQuery.Message.Chat.ID,
+				fmt.Sprintf(
+					"@%s\nThey have %d wishes.",
+					user.Username,
+					len(userWishes),
+				),
+			)
+
+			msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
+				tgbotapi.NewInlineKeyboardRow(
+					tgbotapi.NewInlineKeyboardButtonData("Kick", fmt.Sprintf("%s%d:%d", KICK_MEMBER_CALLBACK_PREFIX, member.UserID, groupID)),
+				),
+			)
+
+			bot.HandledSend(msg)
+		}()
+	}
 
 	return nil
 }
@@ -119,14 +242,14 @@ func handleDeleteWishCallback(callbackQuery *tgbotapi.CallbackQuery) error {
 		wish.Description,
 	)
 
-	sendAreYouSure(&areYouSureConfig{
+	err = sendAreYouSure(&areYouSureConfig{
 		chatID:       callbackQuery.Message.Chat.ID,
 		message:      fmt.Sprintf("Are you sure you want to delete this wish?\n\n%s", wishText),
 		actionID:     DELETE_WISH_ACTION,
 		callbackData: fmt.Sprintf("%d", wish.WishID),
 	})
 
-	return nil
+	return err
 }
 
 func handleLeaveGroupCallback(callbackQuery *tgbotapi.CallbackQuery) error {
@@ -150,14 +273,14 @@ func handleLeaveGroupCallback(callbackQuery *tgbotapi.CallbackQuery) error {
 		message = fmt.Sprintf("Do you really want to leave the \"%s\" group?", group.Name)
 	}
 
-	sendAreYouSure(&areYouSureConfig{
+	err = sendAreYouSure(&areYouSureConfig{
 		chatID:       callbackQuery.Message.Chat.ID,
 		message:      message,
 		actionID:     LEAVE_GROUP_ACTION,
 		callbackData: fmt.Sprintf("%d", group.GroupID),
 	})
 
-	return nil
+	return err
 }
 
 func handleInviteMemberCallback(callbackQuery *tgbotapi.CallbackQuery) error {

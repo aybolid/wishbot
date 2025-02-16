@@ -16,6 +16,7 @@ const ARE_YOU_SURE_NO_CALLBACK_PREFIX = "suren:"
 const (
 	LEAVE_GROUP_ACTION = iota
 	DELETE_WISH_ACTION
+	KICK_MEMBER_ACTION
 )
 
 type areYouSureConfig struct {
@@ -30,6 +31,7 @@ type actionHandler = func(int, *tgbotapi.CallbackQuery) error
 var actionHandlers = map[int]actionHandler{
 	LEAVE_GROUP_ACTION: handleGroupLeave,
 	DELETE_WISH_ACTION: handleDeleteWish,
+	KICK_MEMBER_ACTION: handleKickMember,
 }
 
 func sendAreYouSure(config *areYouSureConfig) error {
@@ -75,6 +77,51 @@ func handleYes(callbackQuery *tgbotapi.CallbackQuery) error {
 	} else {
 		logger.Sugared.Errorw("no action handler for action id", "action_id", actionID)
 	}
+
+	return nil
+}
+
+func handleKickMember(dataOffset int, callbackQuery *tgbotapi.CallbackQuery) error {
+	payload := strings.Split(callbackQuery.Data[dataOffset:], ":")
+	logger.Sugared.Debugw("kick member payload", "payload", payload)
+
+	userID, err := strconv.ParseInt(payload[0], 10, 64)
+	if err != nil {
+		return err
+	}
+	groupID, err := strconv.ParseInt(payload[1], 10, 64)
+	if err != nil {
+		return err
+	}
+
+	user, err := db.GetUser(userID)
+	if err != nil {
+		return err
+	}
+
+	group, err := db.GetGroup(groupID)
+	if err != nil {
+		return err
+	}
+
+	err = db.DeleteGroupMember(groupID, userID)
+	if err != nil {
+		return err
+	}
+
+	resp := tgbotapi.NewMessage(callbackQuery.Message.Chat.ID, fmt.Sprintf("You kicked @%s from the \"%s\" group.", user.Username, group.Name))
+	bot.HandledSend(resp)
+
+	go func() {
+		msg := tgbotapi.NewMessage(
+			user.ChatID,
+			fmt.Sprintf(
+				"Hey! You were kicked from the \"%s\" group.",
+				group.Name,
+			),
+		)
+		bot.HandledSend(msg)
+	}()
 
 	return nil
 }

@@ -55,17 +55,20 @@ func ListenToUpdates() {
 
 func handleUpdate(update tgbotapi.Update) {
 	var err error
-	switch {
+	var chatID int64
 
+	switch {
 	case update.Message != nil:
+		chatID = update.Message.Chat.ID
 		err = handleMessage(update.Message)
 	case update.CallbackQuery != nil:
+		chatID = update.CallbackQuery.Message.Chat.ID
 		err = handleCallbackQuery(update.CallbackQuery)
 	}
 
 	if err != nil {
 		logger.Sugared.Error(err)
-		errResp := tgbotapi.NewMessage(update.Message.Chat.ID, "Oops, something went wrong. Please try again later.")
+		errResp := tgbotapi.NewMessage(chatID, "Oops, something went wrong. Please try again later.")
 		bot.HandledSend(errResp)
 	}
 }

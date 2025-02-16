@@ -17,7 +17,8 @@ var cmdHandlers = map[string]cmdHandler{
 	"/leavegroup":  handleLeaveGroup,
 	"/mygroups":    handleMyGroups,
 
-	"/addmember": handleAddMember,
+	"/addmember":     handleAddMember,
+	"/managemembers": handleManageMembers,
 
 	"/addwish":      handleAddWish,
 	"/wishes":       handleWishes,
@@ -39,6 +40,107 @@ func handleCommand(cmdMsg *tgbotapi.Message) error {
 	}
 
 	return err
+}
+
+const MANAGE_MEMBERS_CALLBACK_PREFIX = "managemembers:"
+
+func handleManageMembers(cmdMsg *tgbotapi.Message) error {
+	groups, err := db.GetOwnedGroups(cmdMsg.From.ID)
+	if err != nil {
+		return err
+	}
+
+	switch len(groups) {
+	case 0:
+		resp := tgbotapi.NewMessage(cmdMsg.Chat.ID, "You don't have any owned groups yet. Please create one first. /creategroup")
+		bot.HandledSend(resp)
+		return nil
+
+	case 1:
+		group := groups[0]
+
+		if group.OwnerID != cmdMsg.From.ID {
+			logger.Sugared.Errorw("not the owner of the group", "group_id", group.GroupID, "owner_id", group.OwnerID, "user_id", cmdMsg.From.ID)
+			resp := tgbotapi.NewMessage(cmdMsg.Chat.ID, "You are not the owner of this group.")
+			bot.HandledSend(resp)
+			return nil
+		}
+
+		members, err := db.GetGroupMembers(group.GroupID)
+		if err != nil {
+			return err
+		}
+
+		filteredMembers := make([]*db.GroupMember, 0)
+		for _, member := range members {
+			if member.UserID == cmdMsg.From.ID {
+				continue
+			}
+			filteredMembers = append(filteredMembers, member)
+		}
+
+		if len(filteredMembers) == 0 {
+			resp := tgbotapi.NewMessage(cmdMsg.Chat.ID, "No members to manage found for this group.")
+			bot.HandledSend(resp)
+			return nil
+		}
+
+		resp := tgbotapi.NewMessage(
+			cmdMsg.Chat.ID,
+			fmt.Sprintf(
+				"Here are the members of the \"%s\" group.",
+				group.Name,
+			),
+		)
+		bot.HandledSend(resp)
+
+		for _, member := range filteredMembers {
+			go func() {
+				user, err := db.GetUser(member.UserID)
+				if err != nil {
+					logger.Sugared.Errorw("failed to get user for member display", "user_id", member.UserID, "err", err)
+					return
+				}
+
+				userWishes, err := db.GetUserWishes(member.UserID, group.GroupID)
+				if err != nil {
+					logger.Sugared.Errorw("failed to get user wishes for member display", "user_id", member.UserID, "err", err)
+					return
+				}
+
+				msg := tgbotapi.NewMessage(
+					cmdMsg.Chat.ID,
+					fmt.Sprintf(
+						"@%s\nThey have %d wishes.",
+						user.Username,
+						len(userWishes),
+					),
+				)
+
+				msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
+					tgbotapi.NewInlineKeyboardRow(
+						tgbotapi.NewInlineKeyboardButtonData("Kick", fmt.Sprintf("%s%d:%d", KICK_MEMBER_CALLBACK_PREFIX, member.UserID, group.GroupID)),
+					),
+				)
+
+				bot.HandledSend(msg)
+			}()
+		}
+
+		return nil
+
+	default:
+		resp := tgbotapi.NewMessage(cmdMsg.Chat.ID, "<b>Manage members.</b>\n\nSelect a group to manage members for.")
+
+		resp.ReplyMarkup = getGroupSelectKeyboard(groups, func(group *db.Group) string {
+			return fmt.Sprintf("%s%d", MANAGE_MEMBERS_CALLBACK_PREFIX, group.GroupID)
+		})
+		resp.ParseMode = tgbotapi.ModeHTML
+
+		bot.HandledSend(resp)
+
+		return nil
+	}
 }
 
 const DELETE_WISH_CALLBACK_PREFIX = "delete_wish:"
