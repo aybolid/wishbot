@@ -1,6 +1,7 @@
 package logger
 
 import (
+	"fmt"
 	"os"
 	"time"
 
@@ -8,20 +9,24 @@ import (
 	"go.uber.org/zap"
 )
 
-const LOGS_DIR = "logs"
+const (
+	LOGS_DIR         = "logs"
+	FILE_DATE_FORMAT = "2006-01-02_15-04-05"
+)
 
 var Sugared *zap.SugaredLogger
 
-// Initializes the sugared logger.
-//
-// Panics if an error occurs.
+// Init initializes the sugared logger.
+// Panics if an error occurs during initialization.
 func Init() {
 	if Sugared != nil {
 		return
 	}
 
-	var err error
-	var logger *zap.Logger
+	var (
+		err    error
+		logger *zap.Logger
+	)
 
 	if env.Vars.Mode == env.DEV_MODE {
 		logger, err = zap.NewDevelopment()
@@ -32,20 +37,29 @@ func Init() {
 	if err != nil {
 		panic(err)
 	}
-	defer logger.Sync()
 
 	Sugared = logger.Sugar()
+}
+
+// Shutdown flushes any buffered log entries.
+// It should be called at program termination.
+func Shutdown() {
+	if Sugared != nil {
+		_ = Sugared.Sync()
+	}
 }
 
 func newProdLogger() (*zap.Logger, error) {
 	cfg := zap.NewProductionConfig()
 
 	if _, err := os.Stat(LOGS_DIR); os.IsNotExist(err) {
-		os.Mkdir(LOGS_DIR, 0755)
+		if err := os.Mkdir(LOGS_DIR, 0755); err != nil {
+			return nil, fmt.Errorf("failed to create logs directory: %w", err)
+		}
 	}
 
-	cfg.OutputPaths = []string{
-		LOGS_DIR + "/" + time.Now().Format("2006-01-02_15-04-05") + ".log",
-	}
+	logFile := fmt.Sprintf("%s/%s.log", LOGS_DIR, time.Now().Format(FILE_DATE_FORMAT))
+	cfg.OutputPaths = []string{logFile}
+
 	return cfg.Build()
 }
