@@ -23,7 +23,7 @@ func Init() {
 	var err error
 	var logger *zap.Logger
 
-	if env.Vars.Mode == "dev" {
+	if env.Vars.Mode == env.DEV_MODE {
 		logger, err = zap.NewDevelopment()
 	} else {
 		logger, err = newProdLogger()
@@ -45,7 +45,7 @@ func newProdLogger() (*zap.Logger, error) {
 	}
 
 	cfg.OutputPaths = []string{
-		LOGS_DIR + "/" + time.Now().Format("2006-01-02") + ".log",
+		LOGS_DIR + "/" + time.Now().Format("2006-01-02_15-04-05") + ".log",
 	}
 	return cfg.Build()
 }

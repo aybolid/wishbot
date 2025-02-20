@@ -36,7 +36,7 @@ func Init() {
 	}
 	bot = &botAPI{BotAPI: *api}
 
-	bot.Debug = env.Vars.Mode == "dev"
+	bot.Debug = env.Vars.Mode == env.DEV_MODE
 
 	logger.Sugared.Infow("telegram bot initialized", "name", bot.Self.UserName)
 }
