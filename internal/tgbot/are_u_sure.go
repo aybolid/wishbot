@@ -10,8 +10,10 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
-const ARE_YOU_SURE_YES_CALLBACK_PREFIX = "surey:"
-const ARE_YOU_SURE_NO_CALLBACK_PREFIX = "suren:"
+const (
+	ARE_YOU_SURE_YES_CALLBACK_PREFIX = "surey:"
+	ARE_YOU_SURE_NO_CALLBACK_PREFIX  = "suren:"
+)
 
 const (
 	LEAVE_GROUP_ACTION = iota
