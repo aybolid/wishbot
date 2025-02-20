@@ -7,6 +7,7 @@ type dbUser struct {
 	// Username is stored without the @ symbol.
 	Username  string `db:"username"`
 	ChatID    int64  `db:"chat_id"`
+	Language  string `db:"language"`
 	CreatedAt string `db:"created_at"`
 	UpdatedAt string `db:"updated_at"`
 }
@@ -16,6 +17,7 @@ type User struct {
 	// Username is stored without the @ symbol.
 	Username  string
 	ChatID    int64
+	Language  string
 	CreatedAt string
 	UpdatedAt string
 }
@@ -77,6 +79,7 @@ func (dbu *dbUser) toUser() *User {
 		UserID:    dbu.UserID,
 		Username:  dbu.Username,
 		ChatID:    dbu.ChatID,
+		Language:  dbu.Language,
 		CreatedAt: dbu.CreatedAt,
 		UpdatedAt: dbu.UpdatedAt,
 	}

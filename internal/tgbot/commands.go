@@ -9,7 +9,7 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
-type cmdHandler func(cmdMsg *tgbotapi.Message) error
+type cmdHandler func(ctx *handleContext) error
 
 var cmdHandlers = map[string]cmdHandler{
 	"/start": handleStart,
@@ -28,16 +28,16 @@ var cmdHandlers = map[string]cmdHandler{
 	"/cancel": handleCancel,
 }
 
-func handleCommand(cmdMsg *tgbotapi.Message) error {
-	logger.Sugared.Infow("handling command", "command", cmdMsg.Text, "chat_id", cmdMsg.Chat.ID, "from", cmdMsg.From)
-	State.releaseUser(cmdMsg.From.ID)
+func handleCommand(ctx *handleContext) error {
+	logger.Sugared.Infow("handling command", "command", ctx.msg.Text, "chat_id", ctx.msg.Chat.ID, "from", ctx.msg.From)
+	State.releaseUser(ctx.msg.From.ID)
 
 	var err error
 
-	if handler, ok := cmdHandlers[cmdMsg.Text]; ok {
-		err = handler(cmdMsg)
+	if handler, ok := cmdHandlers[ctx.msg.Text]; ok {
+		err = handler(ctx)
 	} else {
-		logger.Sugared.Errorw("unknown command received", "command", cmdMsg.Text, "chat_id", cmdMsg.Chat.ID, "from", cmdMsg.From)
+		logger.Sugared.Errorw("unknown command received", "command", ctx.msg.Text, "chat_id", ctx.msg.Chat.ID, "from", ctx.msg.From)
 	}
 
 	return err
@@ -45,24 +45,24 @@ func handleCommand(cmdMsg *tgbotapi.Message) error {
 
 const MANAGE_MEMBERS_CALLBACK_PREFIX = "managemembers:"
 
-func handleManageMembers(cmdMsg *tgbotapi.Message) error {
-	groups, err := db.GetOwnedGroups(cmdMsg.From.ID)
+func handleManageMembers(ctx *handleContext) error {
+	groups, err := db.GetOwnedGroups(ctx.msg.From.ID)
 	if err != nil {
 		return err
 	}
 
 	switch len(groups) {
 	case 0:
-		resp := tgbotapi.NewMessage(cmdMsg.Chat.ID, "You don't have any owned groups yet. Please create one first. /creategroup")
+		resp := tgbotapi.NewMessage(ctx.msg.Chat.ID, "You don't have any owned groups yet. Please create one first. /creategroup")
 		bot.HandledSend(resp)
 		return nil
 
 	case 1:
 		group := groups[0]
 
-		if group.OwnerID != cmdMsg.From.ID {
-			logger.Sugared.Errorw("not the owner of the group", "group_id", group.GroupID, "owner_id", group.OwnerID, "user_id", cmdMsg.From.ID)
-			resp := tgbotapi.NewMessage(cmdMsg.Chat.ID, fmt.Sprintf("You are not the owner of the \"%s\" group.", group.Name))
+		if group.OwnerID != ctx.msg.From.ID {
+			logger.Sugared.Errorw("not the owner of the group", "group_id", group.GroupID, "owner_id", group.OwnerID, "user_id", ctx.msg.From.ID)
+			resp := tgbotapi.NewMessage(ctx.msg.Chat.ID, fmt.Sprintf("You are not the owner of the \"%s\" group.", group.Name))
 			bot.HandledSend(resp)
 			return nil
 		}
@@ -74,20 +74,20 @@ func handleManageMembers(cmdMsg *tgbotapi.Message) error {
 
 		filteredMembers := make([]*db.GroupMember, 0)
 		for _, member := range members {
-			if member.UserID == cmdMsg.From.ID {
+			if member.UserID == ctx.msg.From.ID {
 				continue
 			}
 			filteredMembers = append(filteredMembers, member)
 		}
 
 		if len(filteredMembers) == 0 {
-			resp := tgbotapi.NewMessage(cmdMsg.Chat.ID, fmt.Sprintf("No members to manage found for the \"%s\" group.", group.Name))
+			resp := tgbotapi.NewMessage(ctx.msg.Chat.ID, fmt.Sprintf("No members to manage found for the \"%s\" group.", group.Name))
 			bot.HandledSend(resp)
 			return nil
 		}
 
 		resp := tgbotapi.NewMessage(
-			cmdMsg.Chat.ID,
+			ctx.msg.Chat.ID,
 			fmt.Sprintf(
 				"Here are the members of the \"%s\" group.",
 				group.Name,
@@ -110,7 +110,7 @@ func handleManageMembers(cmdMsg *tgbotapi.Message) error {
 				}
 
 				msg := tgbotapi.NewMessage(
-					cmdMsg.Chat.ID,
+					ctx.msg.Chat.ID,
 					fmt.Sprintf(
 						"@%s\nThey have %d wishes.",
 						user.Username,
@@ -131,7 +131,7 @@ func handleManageMembers(cmdMsg *tgbotapi.Message) error {
 		return nil
 
 	default:
-		resp := tgbotapi.NewMessage(cmdMsg.Chat.ID, "<b>Manage members.</b>\n\nSelect a group to manage members for.")
+		resp := tgbotapi.NewMessage(ctx.msg.Chat.ID, "<b>Manage members.</b>\n\nSelect a group to manage members for.")
 
 		resp.ReplyMarkup = getGroupSelectKeyboard(groups, func(group *db.Group) string {
 			return fmt.Sprintf("%s%d", MANAGE_MEMBERS_CALLBACK_PREFIX, group.GroupID)
@@ -147,15 +147,15 @@ func handleManageMembers(cmdMsg *tgbotapi.Message) error {
 const DELETE_WISH_CALLBACK_PREFIX = "delete_wish:"
 const MANAGE_WISHES_CALLBACK_PREFIX = "manage_wishes:"
 
-func handleManageWishes(cmdMsg *tgbotapi.Message) error {
-	groups, err := db.GetUserGroups(cmdMsg.From.ID)
+func handleManageWishes(ctx *handleContext) error {
+	groups, err := db.GetUserGroups(ctx.msg.From.ID)
 	if err != nil {
 		return err
 	}
 
 	switch len(groups) {
 	case 0:
-		resp := tgbotapi.NewMessage(cmdMsg.Chat.ID, "You don't have any groups yet. Please create or join one first. /creategroup")
+		resp := tgbotapi.NewMessage(ctx.msg.Chat.ID, "You don't have any groups yet. Please create or join one first. /creategroup")
 		bot.HandledSend(resp)
 		return nil
 
@@ -169,14 +169,14 @@ func handleManageWishes(cmdMsg *tgbotapi.Message) error {
 
 		if len(wishes) == 0 {
 			resp := tgbotapi.NewMessage(
-				cmdMsg.Chat.ID, fmt.Sprintf("No wishes found for the \"%s\" group. /addwish", group.Name),
+				ctx.msg.Chat.ID, fmt.Sprintf("No wishes found for the \"%s\" group. /addwish", group.Name),
 			)
 			bot.HandledSend(resp)
 			return nil
 		}
 
 		resp := tgbotapi.NewMessage(
-			cmdMsg.Chat.ID,
+			ctx.msg.Chat.ID,
 			fmt.Sprintf(
 				"Here are your wishes from the \"%s\" group.",
 				group.Name,
@@ -187,7 +187,7 @@ func handleManageWishes(cmdMsg *tgbotapi.Message) error {
 		for _, wish := range wishes {
 			go func() {
 				msg := tgbotapi.NewMessage(
-					cmdMsg.Chat.ID,
+					ctx.msg.Chat.ID,
 					fmt.Sprintf(
 						"%s\n%s\n\n",
 						wish.URL,
@@ -208,7 +208,7 @@ func handleManageWishes(cmdMsg *tgbotapi.Message) error {
 		return nil
 
 	default:
-		resp := tgbotapi.NewMessage(cmdMsg.Chat.ID, "<b>Manage wishes</b>\n\nSelect a group to manage wishes for.")
+		resp := tgbotapi.NewMessage(ctx.msg.Chat.ID, "<b>Manage wishes</b>\n\nSelect a group to manage wishes for.")
 
 		resp.ReplyMarkup = getGroupSelectKeyboard(groups, func(group *db.Group) string {
 			return fmt.Sprintf("%s%d", MANAGE_WISHES_CALLBACK_PREFIX, group.GroupID)
@@ -223,15 +223,15 @@ func handleManageWishes(cmdMsg *tgbotapi.Message) error {
 
 const LEAVE_GROUP_CALLBACK_PREFIX = "leave_group:"
 
-func handleLeaveGroup(cmdMsg *tgbotapi.Message) error {
-	groups, err := db.GetUserGroups(cmdMsg.From.ID)
+func handleLeaveGroup(ctx *handleContext) error {
+	groups, err := db.GetUserGroups(ctx.msg.From.ID)
 	if err != nil {
 		return err
 	}
 
 	switch len(groups) {
 	case 0:
-		resp := tgbotapi.NewMessage(cmdMsg.Chat.ID, "You are not a member of any group.")
+		resp := tgbotapi.NewMessage(ctx.msg.Chat.ID, "You are not a member of any group.")
 		bot.HandledSend(resp)
 		return nil
 
@@ -239,7 +239,7 @@ func handleLeaveGroup(cmdMsg *tgbotapi.Message) error {
 		group := groups[0]
 
 		message := ""
-		if group.OwnerID == cmdMsg.From.ID {
+		if group.OwnerID == ctx.msg.From.ID {
 			message = fmt.Sprintf(
 				"Do you really want to leave the \"%s\" group?\n<b>This action will delete the group, members and wishes as you are the owner.</b>",
 				group.Name,
@@ -249,7 +249,7 @@ func handleLeaveGroup(cmdMsg *tgbotapi.Message) error {
 		}
 
 		sendAreYouSure(&areYouSureConfig{
-			chatID:       cmdMsg.Chat.ID,
+			chatID:       ctx.msg.Chat.ID,
 			message:      message,
 			actionID:     LEAVE_GROUP_ACTION,
 			callbackData: fmt.Sprintf("%d", group.GroupID),
@@ -258,7 +258,7 @@ func handleLeaveGroup(cmdMsg *tgbotapi.Message) error {
 		return nil
 
 	default:
-		resp := tgbotapi.NewMessage(cmdMsg.Chat.ID, "<b>Leave group :(</b>\n\nSelect a group to leave.")
+		resp := tgbotapi.NewMessage(ctx.msg.Chat.ID, "<b>Leave group :(</b>\n\nSelect a group to leave.")
 
 		resp.ReplyMarkup = getGroupSelectKeyboard(groups, func(group *db.Group) string {
 			return fmt.Sprintf("%s%d", LEAVE_GROUP_CALLBACK_PREFIX, group.GroupID)
@@ -271,40 +271,33 @@ func handleLeaveGroup(cmdMsg *tgbotapi.Message) error {
 	}
 }
 
-func handleCancel(cmdMsg *tgbotapi.Message) error {
+func handleCancel(ctx *handleContext) error {
 	// this command is meant to release the user from pending flows
 	// as long as we do it in the command handler, we don't need to do anything here
 	return nil
 }
 
-func handleStart(cmdMsg *tgbotapi.Message) error {
-	if !cmdMsg.From.IsBot {
-		_, err := db.CreateUser(cmdMsg.From, cmdMsg.Chat.ID)
-		if err != nil {
-			return err
-		}
-	}
-
-	resp := tgbotapi.NewMessage(cmdMsg.Chat.ID, fmt.Sprintf("Hello, %s!", cmdMsg.From.FirstName))
+func handleStart(ctx *handleContext) error {
+	resp := tgbotapi.NewMessage(ctx.msg.Chat.ID, fmt.Sprintf("Hello, %s!", ctx.msg.From.FirstName))
 	bot.HandledSend(resp)
 
-	resp = tgbotapi.NewMessage(cmdMsg.Chat.ID, "I am a bot that will help you with sharing your wishes with your friends.")
+	resp = tgbotapi.NewMessage(ctx.msg.Chat.ID, "I am a bot that will help you with sharing your wishes with your friends.")
 	bot.HandledSend(resp)
 
 	return nil
 }
 
-func handleCreateGroup(cmdMsg *tgbotapi.Message) error {
-	userID := cmdMsg.From.ID
+func handleCreateGroup(ctx *handleContext) error {
+	userID := ctx.msg.From.ID
 	State.setPendingGroupCreation(userID)
 
-	resp := tgbotapi.NewMessage(cmdMsg.Chat.ID, "Please send the name for your new group")
+	resp := tgbotapi.NewMessage(ctx.msg.Chat.ID, "Please send the name for your new group")
 	bot.HandledSend(resp)
 	return nil
 }
 
-func handleMyGroups(cmdMsg *tgbotapi.Message) error {
-	userID := cmdMsg.From.ID
+func handleMyGroups(ctx *handleContext) error {
+	userID := ctx.msg.From.ID
 	groups, err := db.GetUserGroups(userID)
 	if err != nil {
 		return err
@@ -312,12 +305,12 @@ func handleMyGroups(cmdMsg *tgbotapi.Message) error {
 
 	switch len(groups) {
 	case 0:
-		resp := tgbotapi.NewMessage(cmdMsg.Chat.ID, "You don't have any groups yet. Please create or join one first. /creategroup")
+		resp := tgbotapi.NewMessage(ctx.msg.Chat.ID, "You don't have any groups yet. Please create or join one first. /creategroup")
 		bot.HandledSend(resp)
 		return nil
 
 	default:
-		resp := tgbotapi.NewMessage(cmdMsg.Chat.ID, "Here are your groups:")
+		resp := tgbotapi.NewMessage(ctx.msg.Chat.ID, "Here are your groups:")
 		bot.HandledSend(resp)
 
 		for _, group := range groups {
@@ -346,7 +339,7 @@ func handleMyGroups(cmdMsg *tgbotapi.Message) error {
 				}
 
 				resp := tgbotapi.NewMessage(
-					cmdMsg.Chat.ID,
+					ctx.msg.Chat.ID,
 					fmt.Sprintf(
 						"<b>%s</b>\n\nThe group has %d members.\n%s",
 						group.Name,
@@ -364,30 +357,30 @@ func handleMyGroups(cmdMsg *tgbotapi.Message) error {
 	}
 }
 
-func handleAddMember(cmdMsg *tgbotapi.Message) error {
-	groups, err := db.GetOwnedGroups(cmdMsg.From.ID)
+func handleAddMember(ctx *handleContext) error {
+	groups, err := db.GetOwnedGroups(ctx.msg.From.ID)
 	if err != nil {
 		return err
 	}
 
 	switch len(groups) {
 	case 0:
-		resp := tgbotapi.NewMessage(cmdMsg.Chat.ID, "You don't have any created groups yet. Please create one first. /creategroup")
+		resp := tgbotapi.NewMessage(ctx.msg.Chat.ID, "You don't have any created groups yet. Please create one first. /creategroup")
 		bot.HandledSend(resp)
 		return nil
 
 	case 1:
 		group := groups[0]
 
-		State.setPendingInviteCreation(cmdMsg.From.ID, group.GroupID)
+		State.setPendingInviteCreation(ctx.msg.From.ID, group.GroupID)
 
-		resp := tgbotapi.NewMessage(cmdMsg.Chat.ID, fmt.Sprintf("Please mention the users you want to invite to the \"%s\" group.", group.Name))
+		resp := tgbotapi.NewMessage(ctx.msg.Chat.ID, fmt.Sprintf("Please mention the users you want to invite to the \"%s\" group.", group.Name))
 		bot.HandledSend(resp)
 
 		return nil
 
 	default:
-		resp := tgbotapi.NewMessage(cmdMsg.Chat.ID, "<b>Invite another member.</b>\n\nSelect a group to add a member to (you can add members only to groups you created).")
+		resp := tgbotapi.NewMessage(ctx.msg.Chat.ID, "<b>Invite another member.</b>\n\nSelect a group to add a member to (you can add members only to groups you created).")
 
 		resp.ReplyMarkup = getGroupSelectKeyboard(groups, func(group *db.Group) string {
 			return fmt.Sprintf("%s%d", INVITE_MEMBER_CALLBACK_PREFIX, group.GroupID)
@@ -402,15 +395,15 @@ func handleAddMember(cmdMsg *tgbotapi.Message) error {
 
 const ADD_WISH_CALLBACK_PREFIX = "add_wish:"
 
-func handleAddWish(cmdMsg *tgbotapi.Message) error {
-	groups, err := db.GetUserGroups(cmdMsg.From.ID)
+func handleAddWish(ctx *handleContext) error {
+	groups, err := db.GetUserGroups(ctx.msg.From.ID)
 	if err != nil {
 		return err
 	}
 
 	switch len(groups) {
 	case 0:
-		resp := tgbotapi.NewMessage(cmdMsg.Chat.ID, "You don't have any groups yet. Please create or join one first.")
+		resp := tgbotapi.NewMessage(ctx.msg.Chat.ID, "You don't have any groups yet. Please create or join one first.")
 		bot.HandledSend(resp)
 		return nil
 
@@ -418,7 +411,7 @@ func handleAddWish(cmdMsg *tgbotapi.Message) error {
 		group := groups[0]
 
 		resp := tgbotapi.NewMessage(
-			cmdMsg.Chat.ID,
+			ctx.msg.Chat.ID,
 			fmt.Sprintf(
 				"Ok! Lets add a wish to the \"%s\" group.",
 				group.Name,
@@ -427,19 +420,19 @@ func handleAddWish(cmdMsg *tgbotapi.Message) error {
 		bot.HandledSend(resp)
 
 		resp = tgbotapi.NewMessage(
-			cmdMsg.Chat.ID,
+			ctx.msg.Chat.ID,
 			"Please send the URL of the wish you want to add with some description if applicable\\.\n\nExample:\n>>https://example\\.com\n>>This is a description",
 		)
 		resp.ParseMode = tgbotapi.ModeMarkdownV2
 		bot.HandledSend(resp)
 
-		State.setPendingWishCreation(cmdMsg.From.ID, group.GroupID)
+		State.setPendingWishCreation(ctx.msg.From.ID, group.GroupID)
 
 		return nil
 
 	default:
 		resp := tgbotapi.NewMessage(
-			cmdMsg.Chat.ID,
+			ctx.msg.Chat.ID,
 			"<b>Add new wish.</b>\n\nSelect a group to add a wish to. Created wish will be shared with all members of the group.",
 		)
 
@@ -456,15 +449,15 @@ func handleAddWish(cmdMsg *tgbotapi.Message) error {
 
 const DISPLAY_WISHES_CALLBACK_PREFIX = "display_wishes:"
 
-func handleWishes(cmdMsg *tgbotapi.Message) error {
-	groups, err := db.GetUserGroups(cmdMsg.From.ID)
+func handleWishes(ctx *handleContext) error {
+	groups, err := db.GetUserGroups(ctx.msg.From.ID)
 	if err != nil {
 		return err
 	}
 
 	switch len(groups) {
 	case 0:
-		resp := tgbotapi.NewMessage(cmdMsg.Chat.ID, "You don't have any groups yet. Please create or join one first. /creategroup")
+		resp := tgbotapi.NewMessage(ctx.msg.Chat.ID, "You don't have any groups yet. Please create or join one first. /creategroup")
 		bot.HandledSend(resp)
 		return nil
 
@@ -476,7 +469,7 @@ func handleWishes(cmdMsg *tgbotapi.Message) error {
 		}
 
 		if len(wishes) == 0 {
-			resp := tgbotapi.NewMessage(cmdMsg.Chat.ID, fmt.Sprintf("No wishes found for the \"%s\" group. /addwish", group.Name))
+			resp := tgbotapi.NewMessage(ctx.msg.Chat.ID, fmt.Sprintf("No wishes found for the \"%s\" group. /addwish", group.Name))
 			bot.HandledSend(resp)
 			return nil
 		}
@@ -487,7 +480,7 @@ func handleWishes(cmdMsg *tgbotapi.Message) error {
 		}
 
 		resp := tgbotapi.NewMessage(
-			cmdMsg.Chat.ID,
+			ctx.msg.Chat.ID,
 			fmt.Sprintf(
 				"Here are wishes from the \"%s\" group!",
 				group.Name,
@@ -505,7 +498,7 @@ func handleWishes(cmdMsg *tgbotapi.Message) error {
 
 				text := ""
 
-				if user.UserID == cmdMsg.From.ID {
+				if user.UserID == ctx.msg.From.ID {
 					text += "Your wishes:\n\n"
 				} else {
 					text += fmt.Sprintf(
@@ -524,7 +517,7 @@ func handleWishes(cmdMsg *tgbotapi.Message) error {
 				}
 
 				resp := tgbotapi.NewMessage(
-					cmdMsg.Chat.ID,
+					ctx.msg.Chat.ID,
 					text,
 				)
 				bot.HandledSend(resp)
@@ -535,7 +528,7 @@ func handleWishes(cmdMsg *tgbotapi.Message) error {
 
 	default:
 		resp := tgbotapi.NewMessage(
-			cmdMsg.Chat.ID,
+			ctx.msg.Chat.ID,
 			"<b>View group wishes.</b>\n\nSelect a group and I will show you all wishes from that group.",
 		)
 

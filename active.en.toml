@@ -1,2 +1,2 @@
-[hello]
-other = "Hey, {{.Username}}!"
+[genericError]
+other = "Oops, something went wrong. Please try again later."

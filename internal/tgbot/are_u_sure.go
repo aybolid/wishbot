@@ -28,7 +28,7 @@ type areYouSureConfig struct {
 	callbackData string
 }
 
-type actionHandler = func(int, *tgbotapi.CallbackQuery) error
+type actionHandler = func(int, *handleContext) error
 
 var actionHandlers = map[int]actionHandler{
 	LEAVE_GROUP_ACTION: handleGroupLeave,
@@ -59,12 +59,12 @@ func sendAreYouSure(config *areYouSureConfig) error {
 	return nil
 }
 
-func handleNo(callbackQuery *tgbotapi.CallbackQuery) error {
+func handleNo(ctx *handleContext) error {
 	return nil
 }
 
-func handleYes(callbackQuery *tgbotapi.CallbackQuery) error {
-	payload := strings.Split(callbackQuery.Data[len(ARE_YOU_SURE_YES_CALLBACK_PREFIX):], ":")
+func handleYes(ctx *handleContext) error {
+	payload := strings.Split(ctx.callbackQuery.Data[len(ARE_YOU_SURE_YES_CALLBACK_PREFIX):], ":")
 
 	logger.Sugared.Debugw("are you sure payload", "payload", payload)
 
@@ -75,7 +75,7 @@ func handleYes(callbackQuery *tgbotapi.CallbackQuery) error {
 
 	handler, ok := actionHandlers[int(actionID)]
 	if ok {
-		return handler(len(ARE_YOU_SURE_YES_CALLBACK_PREFIX)+len(payload[0])+1, callbackQuery)
+		return handler(len(ARE_YOU_SURE_YES_CALLBACK_PREFIX)+len(payload[0])+1, ctx)
 	} else {
 		logger.Sugared.Errorw("no action handler for action id", "action_id", actionID)
 	}
@@ -83,8 +83,8 @@ func handleYes(callbackQuery *tgbotapi.CallbackQuery) error {
 	return nil
 }
 
-func handleKickMember(dataOffset int, callbackQuery *tgbotapi.CallbackQuery) error {
-	payload := strings.Split(callbackQuery.Data[dataOffset:], ":")
+func handleKickMember(dataOffset int, ctx *handleContext) error {
+	payload := strings.Split(ctx.callbackQuery.Data[dataOffset:], ":")
 	logger.Sugared.Debugw("kick member payload", "payload", payload)
 
 	userID, err := strconv.ParseInt(payload[0], 10, 64)
@@ -111,7 +111,7 @@ func handleKickMember(dataOffset int, callbackQuery *tgbotapi.CallbackQuery) err
 		return err
 	}
 
-	resp := tgbotapi.NewMessage(callbackQuery.Message.Chat.ID, fmt.Sprintf("You kicked @%s from the \"%s\" group.", user.Username, group.Name))
+	resp := tgbotapi.NewMessage(ctx.callbackQuery.Message.Chat.ID, fmt.Sprintf("You kicked @%s from the \"%s\" group.", user.Username, group.Name))
 	bot.HandledSend(resp)
 
 	go func() {
@@ -128,8 +128,8 @@ func handleKickMember(dataOffset int, callbackQuery *tgbotapi.CallbackQuery) err
 	return nil
 }
 
-func handleDeleteWish(dataOffset int, callbackQuery *tgbotapi.CallbackQuery) error {
-	wishID, err := strconv.ParseInt(callbackQuery.Data[dataOffset:], 10, 64)
+func handleDeleteWish(dataOffset int, ctx *handleContext) error {
+	wishID, err := strconv.ParseInt(ctx.callbackQuery.Data[dataOffset:], 10, 64)
 	if err != nil {
 		return err
 	}
@@ -139,14 +139,14 @@ func handleDeleteWish(dataOffset int, callbackQuery *tgbotapi.CallbackQuery) err
 		return err
 	}
 
-	resp := tgbotapi.NewMessage(callbackQuery.Message.Chat.ID, "Wish deleted.")
+	resp := tgbotapi.NewMessage(ctx.callbackQuery.Message.Chat.ID, "Wish deleted.")
 	bot.HandledSend(resp)
 
 	return nil
 }
 
-func handleGroupLeave(dataOffset int, callbackQuery *tgbotapi.CallbackQuery) error {
-	groupID, err := strconv.ParseInt(callbackQuery.Data[dataOffset:], 10, 64)
+func handleGroupLeave(dataOffset int, ctx *handleContext) error {
+	groupID, err := strconv.ParseInt(ctx.callbackQuery.Data[dataOffset:], 10, 64)
 	if err != nil {
 		return err
 	}
@@ -160,23 +160,23 @@ func handleGroupLeave(dataOffset int, callbackQuery *tgbotapi.CallbackQuery) err
 		return err
 	}
 
-	err = db.DeleteGroupMember(groupID, callbackQuery.From.ID)
+	err = db.DeleteGroupMember(groupID, ctx.callbackQuery.From.ID)
 	if err != nil {
 		return err
 	}
 
-	resp := tgbotapi.NewMessage(callbackQuery.Message.Chat.ID, fmt.Sprintf("You left the \"%s\" group.", group.Name))
+	resp := tgbotapi.NewMessage(ctx.callbackQuery.Message.Chat.ID, fmt.Sprintf("You left the \"%s\" group.", group.Name))
 	bot.HandledSend(resp)
 
-	if group.OwnerID == callbackQuery.From.ID {
+	if group.OwnerID == ctx.callbackQuery.From.ID {
 		resp = tgbotapi.NewMessage(
-			callbackQuery.Message.Chat.ID,
+			ctx.callbackQuery.Message.Chat.ID,
 			"As you are the owner, the group and all related data was deleted. I hope you didn't do it accidentally.",
 		)
 		bot.HandledSend(resp)
 
 		for _, member := range members {
-			if member.UserID == callbackQuery.From.ID {
+			if member.UserID == ctx.callbackQuery.From.ID {
 				continue
 			}
 			go func() {
@@ -199,7 +199,7 @@ func handleGroupLeave(dataOffset int, callbackQuery *tgbotapi.CallbackQuery) err
 		}
 	} else {
 		for _, member := range members {
-			if member.UserID == callbackQuery.From.ID {
+			if member.UserID == ctx.callbackQuery.From.ID {
 				continue
 			}
 			go func() {
@@ -213,7 +213,7 @@ func handleGroupLeave(dataOffset int, callbackQuery *tgbotapi.CallbackQuery) err
 					user.ChatID,
 					fmt.Sprintf(
 						"Hey! %s left the \"%s\" group.",
-						callbackQuery.From.FirstName,
+						ctx.callbackQuery.From.FirstName,
 						group.Name,
 					),
 				)

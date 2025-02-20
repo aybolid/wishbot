@@ -1,13 +1,25 @@
 package tgbot
 
 import (
+	"database/sql"
+
+	"github.com/aybolid/wishbot/internal/db"
 	"github.com/aybolid/wishbot/internal/env"
+	"github.com/aybolid/wishbot/internal/locals"
 	"github.com/aybolid/wishbot/internal/logger"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"github.com/nicksnyder/go-i18n/v2/i18n"
 )
 
 type botAPI struct {
 	*tgbotapi.BotAPI
+}
+
+type handleContext struct {
+	user          *db.User
+	localizer     *i18n.Localizer
+	msg           *tgbotapi.Message
+	callbackQuery *tgbotapi.CallbackQuery
 }
 
 // HandledSend is a wrapper around the Send method that logs sent messages and errors if any.
@@ -56,36 +68,71 @@ func processUpdate(update tgbotapi.Update) {
 	var (
 		err    error
 		chatID int64
+		userID int64
 	)
 
-	switch {
-	case update.Message != nil:
+	if update.Message != nil {
+		userID = update.Message.From.ID
 		chatID = update.Message.Chat.ID
-		err = handleMessage(update.Message)
-	case update.CallbackQuery != nil:
+	}
+	if update.CallbackQuery != nil {
+		userID = update.CallbackQuery.From.ID
 		chatID = update.CallbackQuery.Message.Chat.ID
-		err = handleCallbackQuery(update.CallbackQuery)
-	default:
-		return
+	}
+
+	user, err := db.GetUser(userID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			var tgUser *tgbotapi.User
+			if update.Message != nil {
+				tgUser = update.Message.From
+			} else if update.CallbackQuery != nil {
+				tgUser = update.CallbackQuery.From
+			}
+
+			user, err = db.CreateUser(tgUser, chatID)
+		}
+	}
+
+	ctx := &handleContext{
+		user:          user,
+		localizer:     locals.GetLocalizer(user.Language),
+		msg:           update.Message,
+		callbackQuery: update.CallbackQuery,
+	}
+
+	if err == nil {
+		switch {
+		case update.Message != nil:
+			err = handleMessage(ctx)
+		case update.CallbackQuery != nil:
+			err = handleCallbackQuery(ctx)
+		default:
+			return
+		}
 	}
 
 	if err != nil {
 		logger.Sugared.Errorw("error handling update", "error", err)
-		errResp := tgbotapi.NewMessage(chatID, "Oops, something went wrong. Please try again later.")
+		errResp := tgbotapi.NewMessage(chatID, ctx.localizer.MustLocalize(
+			&i18n.LocalizeConfig{
+				MessageID: "genericError",
+			},
+		))
 		bot.HandledSend(errResp)
 	}
 }
 
 // handleMessage processes incoming text messages.
-func handleMessage(msg *tgbotapi.Message) error {
+func handleMessage(ctx *handleContext) error {
 	logger.Sugared.Infow("received message",
-		"text", msg.Text,
-		"chat_id", msg.Chat.ID,
-		"from", msg.From,
+		"text", ctx.msg.Text,
+		"chat_id", ctx.msg.Chat.ID,
+		"from", ctx.msg.From,
 	)
 
-	if msg.IsCommand() {
-		return handleCommand(msg)
+	if ctx.msg.IsCommand() {
+		return handleCommand(ctx)
 	}
-	return handleText(msg)
+	return handleText(ctx)
 }

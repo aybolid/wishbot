@@ -46,6 +46,7 @@ CREATE TABLE IF NOT EXISTS users (
 	user_id INTEGER PRIMARY KEY, -- telegram user id
 	username TEXT NOT NULL UNIQUE,
 	chat_id INTEGER NOT NULL UNIQUE,
+	language TEXT NOT NULL DEFAULT 'en',
 	created_at TEXT NOT NULL DEFAULT (datetime('now')),
 	updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
