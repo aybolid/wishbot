@@ -7,7 +7,7 @@ import (
 )
 
 type botAPI struct {
-	tgbotapi.BotAPI
+	*tgbotapi.BotAPI
 }
 
 // HandledSend is a wrapper around the Send method that logs sent messages and errors if any.
@@ -22,9 +22,8 @@ func (b *botAPI) HandledSend(c tgbotapi.Chattable) {
 
 var bot *botAPI
 
-// Initializes the Telegram bot API.
-//
-// Panics if an error occurs.
+// Init initializes the Telegram bot API.
+// It panics if an error occurs during initialization.
 func Init() {
 	if bot != nil {
 		return
@@ -34,28 +33,30 @@ func Init() {
 	if err != nil {
 		panic(err)
 	}
-	bot = &botAPI{BotAPI: *api}
 
+	bot = &botAPI{BotAPI: api}
 	bot.Debug = env.Vars.Mode == env.DEV_MODE
 
 	logger.Sugared.Infow("telegram bot initialized", "name", bot.Self.UserName)
 }
 
-// Listens to incoming Telegram updates.
-func ListenToUpdates() {
-	u := tgbotapi.NewUpdate(0)
-	u.Timeout = 60
+// Listen starts receiving and processing incoming Telegram updates.
+func Listen() {
+	updateConfig := tgbotapi.NewUpdate(0)
+	updateConfig.Timeout = 60
 
-	updates := bot.GetUpdatesChan(u)
-
+	updates := bot.GetUpdatesChan(updateConfig)
 	for update := range updates {
-		handleUpdate(update)
+		processUpdate(update)
 	}
 }
 
-func handleUpdate(update tgbotapi.Update) {
-	var err error
-	var chatID int64
+// processUpdate routes an incoming update to the appropriate handler.
+func processUpdate(update tgbotapi.Update) {
+	var (
+		err    error
+		chatID int64
+	)
 
 	switch {
 	case update.Message != nil:
@@ -64,23 +65,27 @@ func handleUpdate(update tgbotapi.Update) {
 	case update.CallbackQuery != nil:
 		chatID = update.CallbackQuery.Message.Chat.ID
 		err = handleCallbackQuery(update.CallbackQuery)
+	default:
+		return
 	}
 
 	if err != nil {
-		logger.Sugared.Error(err)
+		logger.Sugared.Errorw("error handling update", "error", err)
 		errResp := tgbotapi.NewMessage(chatID, "Oops, something went wrong. Please try again later.")
 		bot.HandledSend(errResp)
 	}
 }
 
+// handleMessage processes incoming text messages.
 func handleMessage(msg *tgbotapi.Message) error {
-	text := msg.Text
-
-	logger.Sugared.Infow("received message", "text", text, "chat_id", msg.Chat.ID, "from", msg.From)
+	logger.Sugared.Infow("received message",
+		"text", msg.Text,
+		"chat_id", msg.Chat.ID,
+		"from", msg.From,
+	)
 
 	if msg.IsCommand() {
 		return handleCommand(msg)
 	}
-
 	return handleText(msg)
 }

@@ -16,5 +16,5 @@ func init() {
 
 func main() {
 	defer logger.Shutdown()
-	tgbot.ListenToUpdates()
+	tgbot.Listen()
 }
