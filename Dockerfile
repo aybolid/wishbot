@@ -18,5 +18,6 @@ FROM alpine:latest
 WORKDIR /app
 
 COPY --from=builder /wishbot .
+COPY --from=builder /app/active.* .
 
 CMD ["/app/wishbot"]
