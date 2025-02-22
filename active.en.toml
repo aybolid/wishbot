@@ -32,7 +32,7 @@ other = "<b>Invite a member.</b>\n\nSelect a group to add a member to (you can o
 other = "Great! Let's add a wish to '{{ .GroupName }}.'"
 
 [sendWishData]
-other = "Please send the URL of the wish you'd like to add, along with a description if applicable.\n\nExample:\n>> https://example.com\n>> This is a description"
+other = "Please send the URL of the wish you'd like to add, along with a description if applicable\\.\n\nExample:\n>> https://example\\.com\n>> This is a description"
 
 [addWishMenu]
 other = "<b>Add a new wish.</b>\n\nSelect a group to add a wish to. The wish will be shared with all group members."
