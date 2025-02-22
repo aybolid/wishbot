@@ -9,6 +9,7 @@ RUN go mod download
 
 COPY *.go ./
 COPY internal ./internal
+COPY active.* ./
 
 RUN CGO_ENABLED=1 GOOS=linux go build -o /wishbot
 
