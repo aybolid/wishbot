@@ -1,2 +1,176 @@
 [genericError]
-other = "Вибачте, щось пішло не так. Будь ласка, спробуйте ще раз пізніше."
+other = "Ой! Щось пішло не так. Будь ласка, спробуйте пізніше."
+
+[hello]
+other = "Привіт, {{ .FirstName }}!"
+
+[intro]
+other = "Я тут, щоб допомогти вам ділитися своїми побажайками з друзями."
+
+[sendGroupName]
+other = "Будь ласка, введіть назву для вашої нової групи."
+
+[noGroups]
+other = "У вас ще немає груп. Спочатку створіть або приєднайтесь до однієї. /creategroup"
+
+[noOwnedGroups]
+other = "Ви ще не створили жодної групи. Спочатку створіть одну. /creategroup"
+
+[yourGroups]
+other = "Ось ваші групи:"
+
+[groupEntry]
+other = "\n<b>{{ .GroupName }}</b>\nУ цій групі {{ .MemberCount }} учасників.\n{{ .Usernames }}"
+
+[mentionToInvite]
+other = "Згадайте користувачів, яких хочете запросити до '{{ .GroupName }}.'"
+
+[inviteMemberMenu]
+other = "<b>Запросити учасника.</b>\n\nВиберіть групу, до якої хочете додати учасника (ви можете додавати учасників лише до створених вами груп)."
+
+[letsAddWish]
+other = "Чудово! Додамо побажайку до '{{ .GroupName }}.'"
+
+[sendWishData]
+other = "Будь ласка, надішліть URL побажайки, яку хочете додати, а також опис, якщо потрібно.\n\nПриклад:\n>> https://example.com\n>> Це опис"
+
+[addWishMenu]
+other = "<b>Додати нову побажайку.</b>\n\nВиберіть групу, до якої хочете додати побажайку. Вона буде доступна всім учасникам групи."
+
+[noWishes]
+other = "У групі '{{ .GroupName }}' немає побажайок. /addwish"
+
+[hereAreWishes]
+other = "Ось побажайки для '{{ .GroupName }}:'"
+
+[hereAreYourWishes]
+other = "Ось ваші побажайки для '{{ .GroupName }}:'"
+
+[viewWishesMenu]
+other = "<b>Переглянути побажайки групи.</b>\n\nВиберіть групу, щоб побачити всі її побажайки."
+
+[yourWishes]
+other = "Ваші побажайки:"
+
+[userWishes]
+other = "Побажайки @{{ .Username }}:"
+
+[leaveGroupMenu]
+other = "<b>Вийти з групи :(</b>\n\nВиберіть групу, з якої хочете вийти."
+
+[manageWishesMenu]
+other = "<b>Керувати побажайками.</b>\n\nВиберіть групу для управління її побажайками."
+
+[manageMembers]
+other = "<b>Керувати учасниками.</b>\n\nВиберіть групу для управління її учасниками."
+
+[noMembers]
+other = "У групі '{{ .GroupName }}' немає учасників. /addmember"
+
+[notOwner]
+other = "Ви не є власником '{{ .GroupName }}.'"
+
+[hereAreMembers]
+other = "Ось учасники групи '{{ .GroupName }}:'"
+
+[memberDisplay]
+other = "@{{ .Username }} має {{ .WishCount }} побажайок."
+
+[leaveOwnedGroup]
+other = "Ви впевнені, що хочете залишити '{{ .GroupName }}'?\n<b>Оскільки ви власник, група, її учасники та всі побажайки будуть видалені.</b>"
+
+[leaveGroup]
+other = "Ви впевнені, що хочете залишити '{{ .GroupName }}'?"
+
+[groupInvite]
+other = "Вас запросили приєднатися до '{{ .GroupName }}' користувач {{ .Inviter }}."
+
+[kickMember]
+other = "Ви впевнені, що хочете виключити @{{ .Username }} з '{{ .GroupName }}'?"
+
+[areYouSure]
+other = "<b>Ви впевнені?</b>\n\n"
+
+[yes]
+other = "Так"
+
+[no]
+other = "Ні"
+
+[wishDeleted]
+other = "Побажайка видалена."
+
+[youLeftGroup]
+other = "Ви залишили '{{ .GroupName }}.'"
+
+[groupDeleted]
+other = "Оскільки ви були власником, група та всі пов'язані дані були видалені. Сподіваємося, що це не сталося випадково!"
+
+[groupDeletedNotification]
+other = "Групу '{{ .GroupName }}' було видалено її власником."
+
+[userLeftGroupNotification]
+other = "{{ .Username }} покинув(ла) '{{ .GroupName }}.'"
+
+[youKickedMember]
+other = "Ви виключили @{{ .Username }} з '{{ .GroupName }}.'"
+
+[youWereKickedNotification]
+other = "Вас виключили з '{{ .GroupName }}.'"
+
+[delete]
+other = "Видалити"
+
+[kick]
+other = "Виключити"
+
+[acceptedInviteNotification]
+other = "{{ .Username }} прийняв(ла) ваше запрошення до '{{ .GroupName }}.'"
+
+[rejectedInviteNotification]
+other = "{{ .Username }} відхилив(ла) ваше запрошення до '{{ .GroupName }}.'"
+
+[youRejectedInvite]
+other = "Ви відхилили запрошення."
+
+[youAcceptedInvite]
+other = "Ви прийняли запрошення."
+
+[deleteWish]
+other = "Ви впевнені, що хочете видалити цю побажайку?\n\n{{ .WishText }}"
+
+[groupCreatedNotification]
+other = "Група '{{ .GroupName }}' була створена."
+
+[canAddMembers]
+other = "Ви можете додавати учасників до групи. /addmember"
+
+[mentionOneUser]
+other = "Будь ласка, згадайте хоча б одного користувача для запрошення."
+
+[didntChatWithUser]
+other = "Здається, {{ .Username }} ще не спілкувався зі мною. Будь ласка, спробуйте пізніше."
+
+[alreadyAMember]
+other = "@{{ .Username }} вже є учасником групи."
+
+[errorInvitingUser]
+other = "Сталася помилка під час запрошення {{ .Username }}. Будь ласка, спробуйте пізніше."
+
+[errorNoURL]
+other = "URL не виявлено! Будь ласка, надішліть URL разом з описом, якщо потрібно."
+
+[wishCreatedNotification]
+other = "Ваша побажайка була успішно додана!"
+
+[errorWishGroupNotification]
+other = "Виникла проблема з повідомленням групи, але ваша побажайка була створена успішно."
+
+[wishCreatedGroupNotification]
+other = "{{ .Username }} додав(ла) нову побажайку до '{{ .GroupName }}.'"
+
+[reject]
+other = "Відхилити"
+
+[accept]
+other = "Прийняти"

@@ -8,6 +8,7 @@ import (
 	"github.com/aybolid/wishbot/internal/db"
 	"github.com/aybolid/wishbot/internal/logger"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"github.com/nicksnyder/go-i18n/v2/i18n"
 )
 
 type callbackHandler = func(*handleContext) error
@@ -76,8 +77,17 @@ func handleKickMemberCallback(ctx *handleContext) error {
 
 	err = sendAreYouSure(
 		&areYouSureConfig{
-			chatID:       ctx.callbackQuery.Message.Chat.ID,
-			message:      fmt.Sprintf("Are you sure you want to kick @%s from the \"%s\" group?", user.Username, group.Name),
+			localizer: ctx.localizer,
+			chatID:    ctx.callbackQuery.Message.Chat.ID,
+			message: ctx.localizer.MustLocalize(
+				&i18n.LocalizeConfig{
+					MessageID: "kickMember",
+					TemplateData: map[string]any{
+						"Username":  user.Username,
+						"GroupName": group.Name,
+					},
+				},
+			),
 			actionID:     KICK_MEMBER_ACTION,
 			callbackData: fmt.Sprintf("%d:%d", user.UserID, groupID),
 		},
@@ -100,7 +110,14 @@ func handleManageMembersCallback(ctx *handleContext) error {
 	}
 	if group.OwnerID != ctx.callbackQuery.From.ID {
 		logger.Sugared.Errorw("not the owner of the group", "group_id", groupID, "owner_id", group.OwnerID, "user_id", ctx.callbackQuery.From.ID)
-		resp := tgbotapi.NewMessage(ctx.callbackQuery.Message.Chat.ID, "You are not the owner of this group.")
+		resp := tgbotapi.NewMessage(ctx.callbackQuery.Message.Chat.ID, ctx.localizer.MustLocalize(
+			&i18n.LocalizeConfig{
+				MessageID: "notOwner",
+				TemplateData: map[string]any{
+					"GroupName": group.Name,
+				},
+			},
+		))
 		bot.HandledSend(resp)
 		return nil
 	}
@@ -119,16 +136,27 @@ func handleManageMembersCallback(ctx *handleContext) error {
 	}
 
 	if len(filteredMembers) == 0 {
-		resp := tgbotapi.NewMessage(ctx.callbackQuery.Message.Chat.ID, fmt.Sprintf("No members to manage found for the \"%s\" group.", group.Name))
+		resp := tgbotapi.NewMessage(ctx.callbackQuery.Message.Chat.ID, ctx.localizer.MustLocalize(
+			&i18n.LocalizeConfig{
+				MessageID: "noMembers",
+				TemplateData: map[string]any{
+					"GroupName": group.Name,
+				},
+			},
+		))
 		bot.HandledSend(resp)
 		return nil
 	}
 
 	resp := tgbotapi.NewMessage(
 		ctx.callbackQuery.Message.Chat.ID,
-		fmt.Sprintf(
-			"Here are the members of the \"%s\" group.",
-			group.Name,
+		ctx.localizer.MustLocalize(
+			&i18n.LocalizeConfig{
+				MessageID: "hereAreMembers",
+				TemplateData: map[string]any{
+					"GroupName": group.Name,
+				},
+			},
 		),
 	)
 	bot.HandledSend(resp)
@@ -158,7 +186,11 @@ func handleManageMembersCallback(ctx *handleContext) error {
 
 			msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
 				tgbotapi.NewInlineKeyboardRow(
-					tgbotapi.NewInlineKeyboardButtonData("Kick", fmt.Sprintf("%s%d:%d", KICK_MEMBER_CALLBACK_PREFIX, member.UserID, groupID)),
+					tgbotapi.NewInlineKeyboardButtonData(ctx.localizer.MustLocalize(
+						&i18n.LocalizeConfig{
+							MessageID: "kick",
+						},
+					), fmt.Sprintf("%s%d:%d", KICK_MEMBER_CALLBACK_PREFIX, member.UserID, groupID)),
 				),
 			)
 
@@ -186,7 +218,15 @@ func handleManageWishesCallback(ctx *handleContext) error {
 
 	if len(wishes) == 0 {
 		resp := tgbotapi.NewMessage(
-			ctx.callbackQuery.Message.Chat.ID, fmt.Sprintf("No wishes found for the \"%s\" group. /addwish", group.Name),
+			ctx.callbackQuery.Message.Chat.ID,
+			ctx.localizer.MustLocalize(
+				&i18n.LocalizeConfig{
+					MessageID: "noWishes",
+					TemplateData: map[string]any{
+						"GroupName": group.Name,
+					},
+				},
+			),
 		)
 		bot.HandledSend(resp)
 		return nil
@@ -194,9 +234,13 @@ func handleManageWishesCallback(ctx *handleContext) error {
 
 	resp := tgbotapi.NewMessage(
 		ctx.callbackQuery.Message.Chat.ID,
-		fmt.Sprintf(
-			"Here are your wishes from the \"%s\" group.",
-			group.Name,
+		ctx.localizer.MustLocalize(
+			&i18n.LocalizeConfig{
+				MessageID: "hereAreYourWishes",
+				TemplateData: map[string]any{
+					"GroupName": group.Name,
+				},
+			},
 		),
 	)
 	bot.HandledSend(resp)
@@ -214,7 +258,11 @@ func handleManageWishesCallback(ctx *handleContext) error {
 
 			msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
 				tgbotapi.NewInlineKeyboardRow(
-					tgbotapi.NewInlineKeyboardButtonData("Delete", fmt.Sprintf("%s%d", DELETE_WISH_CALLBACK_PREFIX, wish.WishID)),
+					tgbotapi.NewInlineKeyboardButtonData(ctx.localizer.MustLocalize(
+						&i18n.LocalizeConfig{
+							MessageID: "delete",
+						},
+					), fmt.Sprintf("%s%d", DELETE_WISH_CALLBACK_PREFIX, wish.WishID)),
 				),
 			)
 
@@ -243,8 +291,16 @@ func handleDeleteWishCallback(ctx *handleContext) error {
 	)
 
 	err = sendAreYouSure(&areYouSureConfig{
-		chatID:       ctx.callbackQuery.Message.Chat.ID,
-		message:      fmt.Sprintf("Are you sure you want to delete this wish?\n\n%s", wishText),
+		localizer: ctx.localizer,
+		chatID:    ctx.callbackQuery.Message.Chat.ID,
+		message: ctx.localizer.MustLocalize(
+			&i18n.LocalizeConfig{
+				MessageID: "deleteWish",
+				TemplateData: map[string]any{
+					"WishText": wishText,
+				},
+			},
+		),
 		actionID:     DELETE_WISH_ACTION,
 		callbackData: fmt.Sprintf("%d", wish.WishID),
 	})
@@ -265,15 +321,27 @@ func handleLeaveGroupCallback(ctx *handleContext) error {
 
 	message := ""
 	if group.OwnerID == ctx.callbackQuery.From.ID {
-		message = fmt.Sprintf(
-			"Do you really want to leave the \"%s\" group?\n<b>This action will delete the group, members and wishes as you are the owner.</b>",
-			group.Name,
+		message = ctx.localizer.MustLocalize(
+			&i18n.LocalizeConfig{
+				MessageID: "leaveOwnedGroup",
+				TemplateData: map[string]any{
+					"GroupName": group.Name,
+				},
+			},
 		)
 	} else {
-		message = fmt.Sprintf("Do you really want to leave the \"%s\" group?", group.Name)
+		message = ctx.localizer.MustLocalize(
+			&i18n.LocalizeConfig{
+				MessageID: "leaveGroup",
+				TemplateData: map[string]any{
+					"GroupName": group.Name,
+				},
+			},
+		)
 	}
 
 	err = sendAreYouSure(&areYouSureConfig{
+		localizer:    ctx.localizer,
 		chatID:       ctx.callbackQuery.Message.Chat.ID,
 		message:      message,
 		actionID:     LEAVE_GROUP_ACTION,
@@ -297,7 +365,14 @@ func handleInviteMemberCallback(ctx *handleContext) error {
 
 	State.setPendingInviteCreation(userID, groupID)
 
-	resp := tgbotapi.NewMessage(ctx.callbackQuery.Message.Chat.ID, fmt.Sprintf("Please mention the users you want to invite to the \"%s\" group.", group.Name))
+	resp := tgbotapi.NewMessage(ctx.callbackQuery.Message.Chat.ID, ctx.localizer.MustLocalize(
+		&i18n.LocalizeConfig{
+			MessageID: "mentionToInvite",
+			TemplateData: map[string]any{
+				"GroupName": group.Name,
+			},
+		},
+	))
 	bot.HandledSend(resp)
 
 	return nil
@@ -317,15 +392,23 @@ func handleRejectInviteCallback(ctx *handleContext) error {
 		return err
 	}
 
-	resp := tgbotapi.NewMessage(ctx.callbackQuery.Message.Chat.ID, "You rejected the invite")
+	resp := tgbotapi.NewMessage(ctx.callbackQuery.Message.Chat.ID, ctx.localizer.MustLocalize(
+		&i18n.LocalizeConfig{
+			MessageID: "youRejectedInvite",
+		},
+	))
 	bot.HandledSend(resp)
 
 	msg := tgbotapi.NewMessage(
 		inviter.ChatID,
-		fmt.Sprintf(
-			"%s %s rejected your invite to the \"%s\" group.",
-			ctx.callbackQuery.From.FirstName, ctx.callbackQuery.From.LastName,
-			group.Name,
+		ctx.localizer.MustLocalize(
+			&i18n.LocalizeConfig{
+				MessageID: "rejectedInviteNotification",
+				TemplateData: map[string]any{
+					"Username":  ctx.callbackQuery.From.FirstName,
+					"GroupName": group.Name,
+				},
+			},
 		),
 	)
 	bot.HandledSend(msg)
@@ -352,15 +435,23 @@ func handleAcceptInviteCallback(ctx *handleContext) error {
 		return err
 	}
 
-	resp := tgbotapi.NewMessage(ctx.callbackQuery.Message.Chat.ID, "You accepted the invite")
+	resp := tgbotapi.NewMessage(ctx.callbackQuery.Message.Chat.ID, ctx.localizer.MustLocalize(
+		&i18n.LocalizeConfig{
+			MessageID: "youAcceptedInvite",
+		},
+	))
 	bot.HandledSend(resp)
 
 	msg := tgbotapi.NewMessage(
 		inviter.ChatID,
-		fmt.Sprintf(
-			"%s %s accepted your invite to the \"%s\" group.",
-			ctx.callbackQuery.From.FirstName, ctx.callbackQuery.From.LastName,
-			group.Name,
+		ctx.localizer.MustLocalize(
+			&i18n.LocalizeConfig{
+				MessageID: "acceptedInviteNotification",
+				TemplateData: map[string]any{
+					"Username":  ctx.callbackQuery.From.FirstName,
+					"GroupName": group.Name,
+				},
+			},
 		),
 	)
 	bot.HandledSend(msg)
@@ -381,16 +472,24 @@ func handleAddWishCallback(ctx *handleContext) error {
 
 	resp := tgbotapi.NewMessage(
 		ctx.callbackQuery.Message.Chat.ID,
-		fmt.Sprintf(
-			"Ok! Lets add a wish to the \"%s\" group.",
-			group.Name,
+		ctx.localizer.MustLocalize(
+			&i18n.LocalizeConfig{
+				MessageID: "letsAddWish",
+				TemplateData: map[string]any{
+					"GroupName": group.Name,
+				},
+			},
 		),
 	)
 	bot.HandledSend(resp)
 
 	resp = tgbotapi.NewMessage(
 		ctx.callbackQuery.Message.Chat.ID,
-		"Please send the URL of the wish you want to add with some description if applicable\\.\n\nExample:\n>>https://example\\.com\n>>This is a description",
+		ctx.localizer.MustLocalize(
+			&i18n.LocalizeConfig{
+				MessageID: "sendWishData",
+			},
+		),
 	)
 	resp.ParseMode = tgbotapi.ModeMarkdownV2
 	bot.HandledSend(resp)
@@ -417,7 +516,14 @@ func handleDisplayWishesCallback(ctx *handleContext) error {
 	}
 
 	if len(wishes) == 0 {
-		resp := tgbotapi.NewMessage(ctx.callbackQuery.Message.Chat.ID, "No wishes found for this group. /addwish")
+		resp := tgbotapi.NewMessage(ctx.callbackQuery.Message.Chat.ID, ctx.localizer.MustLocalize(
+			&i18n.LocalizeConfig{
+				MessageID: "noWishes",
+				TemplateData: map[string]any{
+					"GroupName": group.Name,
+				},
+			},
+		))
 		bot.HandledSend(resp)
 		return nil
 	}
@@ -429,9 +535,13 @@ func handleDisplayWishesCallback(ctx *handleContext) error {
 
 	resp := tgbotapi.NewMessage(
 		ctx.callbackQuery.Message.Chat.ID,
-		fmt.Sprintf(
-			"Here are wishes from the \"%s\" group!",
-			group.Name,
+		ctx.localizer.MustLocalize(
+			&i18n.LocalizeConfig{
+				MessageID: "hereAreWishes",
+				TemplateData: map[string]any{
+					"GroupName": group.Name,
+				},
+			},
 		),
 	)
 	bot.HandledSend(resp)
@@ -447,13 +557,22 @@ func handleDisplayWishesCallback(ctx *handleContext) error {
 			text := ""
 
 			if user.UserID == ctx.callbackQuery.From.ID {
-				text += "Your wishes:\n\n"
+				text += ctx.localizer.MustLocalize(
+					&i18n.LocalizeConfig{
+						MessageID: "yourWishes",
+					},
+				)
 			} else {
-				text += fmt.Sprintf(
-					"@%s wishes:\n\n",
-					user.Username,
+				text += ctx.localizer.MustLocalize(
+					&i18n.LocalizeConfig{
+						MessageID: "userWishes",
+						TemplateData: map[string]any{
+							"Username": user.Username,
+						},
+					},
 				)
 			}
+			text += "\n\n"
 
 			for idx, wish := range wishes {
 				text += fmt.Sprintf(

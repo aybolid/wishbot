@@ -7,6 +7,7 @@ import (
 	"github.com/aybolid/wishbot/internal/db"
 	"github.com/aybolid/wishbot/internal/logger"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"github.com/nicksnyder/go-i18n/v2/i18n"
 )
 
 type cmdHandler func(ctx *handleContext) error
@@ -53,7 +54,11 @@ func handleManageMembers(ctx *handleContext) error {
 
 	switch len(groups) {
 	case 0:
-		resp := tgbotapi.NewMessage(ctx.msg.Chat.ID, "You don't have any owned groups yet. Please create one first. /creategroup")
+		resp := tgbotapi.NewMessage(ctx.msg.Chat.ID, ctx.localizer.MustLocalize(
+			&i18n.LocalizeConfig{
+				MessageID: "noOwnedGroups",
+			},
+		))
 		bot.HandledSend(resp)
 		return nil
 
@@ -62,7 +67,17 @@ func handleManageMembers(ctx *handleContext) error {
 
 		if group.OwnerID != ctx.msg.From.ID {
 			logger.Sugared.Errorw("not the owner of the group", "group_id", group.GroupID, "owner_id", group.OwnerID, "user_id", ctx.msg.From.ID)
-			resp := tgbotapi.NewMessage(ctx.msg.Chat.ID, fmt.Sprintf("You are not the owner of the \"%s\" group.", group.Name))
+			resp := tgbotapi.NewMessage(
+				ctx.msg.Chat.ID,
+				ctx.localizer.MustLocalize(
+					&i18n.LocalizeConfig{
+						MessageID: "notOwner",
+						TemplateData: map[string]string{
+							"GroupName": group.Name,
+						},
+					},
+				),
+			)
 			bot.HandledSend(resp)
 			return nil
 		}
@@ -81,16 +96,27 @@ func handleManageMembers(ctx *handleContext) error {
 		}
 
 		if len(filteredMembers) == 0 {
-			resp := tgbotapi.NewMessage(ctx.msg.Chat.ID, fmt.Sprintf("No members to manage found for the \"%s\" group.", group.Name))
+			resp := tgbotapi.NewMessage(ctx.msg.Chat.ID, ctx.localizer.MustLocalize(
+				&i18n.LocalizeConfig{
+					MessageID: "noMembers",
+					TemplateData: map[string]string{
+						"GroupName": group.Name,
+					},
+				},
+			))
 			bot.HandledSend(resp)
 			return nil
 		}
 
 		resp := tgbotapi.NewMessage(
 			ctx.msg.Chat.ID,
-			fmt.Sprintf(
-				"Here are the members of the \"%s\" group.",
-				group.Name,
+			ctx.localizer.MustLocalize(
+				&i18n.LocalizeConfig{
+					MessageID: "hereAreMembers",
+					TemplateData: map[string]string{
+						"GroupName": group.Name,
+					},
+				},
 			),
 		)
 		bot.HandledSend(resp)
@@ -111,16 +137,27 @@ func handleManageMembers(ctx *handleContext) error {
 
 				msg := tgbotapi.NewMessage(
 					ctx.msg.Chat.ID,
-					fmt.Sprintf(
-						"@%s\nThey have %d wishes.",
-						user.Username,
-						len(userWishes),
+					ctx.localizer.MustLocalize(
+						&i18n.LocalizeConfig{
+							MessageID: "memberDisplay",
+							TemplateData: map[string]any{
+								"Username":  user.Username,
+								"WishCount": len(userWishes),
+							},
+						},
 					),
 				)
 
 				msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
 					tgbotapi.NewInlineKeyboardRow(
-						tgbotapi.NewInlineKeyboardButtonData("Kick", fmt.Sprintf("%s%d:%d", KICK_MEMBER_CALLBACK_PREFIX, member.UserID, group.GroupID)),
+						tgbotapi.NewInlineKeyboardButtonData(
+							ctx.localizer.MustLocalize(
+								&i18n.LocalizeConfig{
+									MessageID: "kick",
+								},
+							),
+							fmt.Sprintf("%s%d:%d", KICK_MEMBER_CALLBACK_PREFIX, member.UserID, group.GroupID),
+						),
 					),
 				)
 
@@ -131,7 +168,11 @@ func handleManageMembers(ctx *handleContext) error {
 		return nil
 
 	default:
-		resp := tgbotapi.NewMessage(ctx.msg.Chat.ID, "<b>Manage members.</b>\n\nSelect a group to manage members for.")
+		resp := tgbotapi.NewMessage(ctx.msg.Chat.ID, ctx.localizer.MustLocalize(
+			&i18n.LocalizeConfig{
+				MessageID: "manageMembers",
+			},
+		))
 
 		resp.ReplyMarkup = getGroupSelectKeyboard(groups, func(group *db.Group) string {
 			return fmt.Sprintf("%s%d", MANAGE_MEMBERS_CALLBACK_PREFIX, group.GroupID)
@@ -155,7 +196,11 @@ func handleManageWishes(ctx *handleContext) error {
 
 	switch len(groups) {
 	case 0:
-		resp := tgbotapi.NewMessage(ctx.msg.Chat.ID, "You don't have any groups yet. Please create or join one first. /creategroup")
+		resp := tgbotapi.NewMessage(ctx.msg.Chat.ID, ctx.localizer.MustLocalize(
+			&i18n.LocalizeConfig{
+				MessageID: "noGroups",
+			},
+		))
 		bot.HandledSend(resp)
 		return nil
 
@@ -169,7 +214,14 @@ func handleManageWishes(ctx *handleContext) error {
 
 		if len(wishes) == 0 {
 			resp := tgbotapi.NewMessage(
-				ctx.msg.Chat.ID, fmt.Sprintf("No wishes found for the \"%s\" group. /addwish", group.Name),
+				ctx.msg.Chat.ID, ctx.localizer.MustLocalize(
+					&i18n.LocalizeConfig{
+						MessageID: "noWishesFound",
+						TemplateData: map[string]string{
+							"GroupName": group.Name,
+						},
+					},
+				),
 			)
 			bot.HandledSend(resp)
 			return nil
@@ -177,9 +229,13 @@ func handleManageWishes(ctx *handleContext) error {
 
 		resp := tgbotapi.NewMessage(
 			ctx.msg.Chat.ID,
-			fmt.Sprintf(
-				"Here are your wishes from the \"%s\" group.",
-				group.Name,
+			ctx.localizer.MustLocalize(
+				&i18n.LocalizeConfig{
+					MessageID: "hereAreYourWishes",
+					TemplateData: map[string]string{
+						"GroupName": group.Name,
+					},
+				},
 			),
 		)
 		bot.HandledSend(resp)
@@ -197,7 +253,11 @@ func handleManageWishes(ctx *handleContext) error {
 
 				msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
 					tgbotapi.NewInlineKeyboardRow(
-						tgbotapi.NewInlineKeyboardButtonData("Delete", fmt.Sprintf("%s%d", DELETE_WISH_CALLBACK_PREFIX, wish.WishID)),
+						tgbotapi.NewInlineKeyboardButtonData(ctx.localizer.MustLocalize(
+							&i18n.LocalizeConfig{
+								MessageID: "delete",
+							},
+						), fmt.Sprintf("%s%d", DELETE_WISH_CALLBACK_PREFIX, wish.WishID)),
 					),
 				)
 
@@ -208,7 +268,11 @@ func handleManageWishes(ctx *handleContext) error {
 		return nil
 
 	default:
-		resp := tgbotapi.NewMessage(ctx.msg.Chat.ID, "<b>Manage wishes</b>\n\nSelect a group to manage wishes for.")
+		resp := tgbotapi.NewMessage(ctx.msg.Chat.ID, ctx.localizer.MustLocalize(
+			&i18n.LocalizeConfig{
+				MessageID: "manageWishesMenu",
+			},
+		))
 
 		resp.ReplyMarkup = getGroupSelectKeyboard(groups, func(group *db.Group) string {
 			return fmt.Sprintf("%s%d", MANAGE_WISHES_CALLBACK_PREFIX, group.GroupID)
@@ -231,7 +295,11 @@ func handleLeaveGroup(ctx *handleContext) error {
 
 	switch len(groups) {
 	case 0:
-		resp := tgbotapi.NewMessage(ctx.msg.Chat.ID, "You are not a member of any group.")
+		resp := tgbotapi.NewMessage(ctx.msg.Chat.ID, ctx.localizer.MustLocalize(
+			&i18n.LocalizeConfig{
+				MessageID: "noGroups",
+			},
+		))
 		bot.HandledSend(resp)
 		return nil
 
@@ -240,15 +308,27 @@ func handleLeaveGroup(ctx *handleContext) error {
 
 		message := ""
 		if group.OwnerID == ctx.msg.From.ID {
-			message = fmt.Sprintf(
-				"Do you really want to leave the \"%s\" group?\n<b>This action will delete the group, members and wishes as you are the owner.</b>",
-				group.Name,
+			message = ctx.localizer.MustLocalize(
+				&i18n.LocalizeConfig{
+					MessageID: "leaveOwnedGroup",
+					TemplateData: map[string]string{
+						"GroupName": group.Name,
+					},
+				},
 			)
 		} else {
-			message = fmt.Sprintf("Do you really want to leave the \"%s\" group?", group.Name)
+			message = ctx.localizer.MustLocalize(
+				&i18n.LocalizeConfig{
+					MessageID: "leaveGroup",
+					TemplateData: map[string]string{
+						"GroupName": group.Name,
+					},
+				},
+			)
 		}
 
 		sendAreYouSure(&areYouSureConfig{
+			localizer:    ctx.localizer,
 			chatID:       ctx.msg.Chat.ID,
 			message:      message,
 			actionID:     LEAVE_GROUP_ACTION,
@@ -258,7 +338,11 @@ func handleLeaveGroup(ctx *handleContext) error {
 		return nil
 
 	default:
-		resp := tgbotapi.NewMessage(ctx.msg.Chat.ID, "<b>Leave group :(</b>\n\nSelect a group to leave.")
+		resp := tgbotapi.NewMessage(ctx.msg.Chat.ID, ctx.localizer.MustLocalize(
+			&i18n.LocalizeConfig{
+				MessageID: "leaveGroupMenu",
+			},
+		))
 
 		resp.ReplyMarkup = getGroupSelectKeyboard(groups, func(group *db.Group) string {
 			return fmt.Sprintf("%s%d", LEAVE_GROUP_CALLBACK_PREFIX, group.GroupID)
@@ -278,10 +362,21 @@ func handleCancel(ctx *handleContext) error {
 }
 
 func handleStart(ctx *handleContext) error {
-	resp := tgbotapi.NewMessage(ctx.msg.Chat.ID, fmt.Sprintf("Hello, %s!", ctx.msg.From.FirstName))
+	resp := tgbotapi.NewMessage(ctx.msg.Chat.ID, ctx.localizer.MustLocalize(
+		&i18n.LocalizeConfig{
+			MessageID: "hello",
+			TemplateData: map[string]interface{}{
+				"FirstName": ctx.msg.From.FirstName,
+			},
+		},
+	))
 	bot.HandledSend(resp)
 
-	resp = tgbotapi.NewMessage(ctx.msg.Chat.ID, "I am a bot that will help you with sharing your wishes with your friends.")
+	resp = tgbotapi.NewMessage(ctx.msg.Chat.ID, ctx.localizer.MustLocalize(
+		&i18n.LocalizeConfig{
+			MessageID: "intro",
+		},
+	))
 	bot.HandledSend(resp)
 
 	return nil
@@ -291,7 +386,11 @@ func handleCreateGroup(ctx *handleContext) error {
 	userID := ctx.msg.From.ID
 	State.setPendingGroupCreation(userID)
 
-	resp := tgbotapi.NewMessage(ctx.msg.Chat.ID, "Please send the name for your new group")
+	resp := tgbotapi.NewMessage(ctx.msg.Chat.ID, ctx.localizer.MustLocalize(
+		&i18n.LocalizeConfig{
+			MessageID: "sendGroupName",
+		},
+	))
 	bot.HandledSend(resp)
 	return nil
 }
@@ -305,12 +404,20 @@ func handleMyGroups(ctx *handleContext) error {
 
 	switch len(groups) {
 	case 0:
-		resp := tgbotapi.NewMessage(ctx.msg.Chat.ID, "You don't have any groups yet. Please create or join one first. /creategroup")
+		resp := tgbotapi.NewMessage(ctx.msg.Chat.ID, ctx.localizer.MustLocalize(
+			&i18n.LocalizeConfig{
+				MessageID: "noGroups",
+			},
+		))
 		bot.HandledSend(resp)
 		return nil
 
 	default:
-		resp := tgbotapi.NewMessage(ctx.msg.Chat.ID, "Here are your groups:")
+		resp := tgbotapi.NewMessage(ctx.msg.Chat.ID, ctx.localizer.MustLocalize(
+			&i18n.LocalizeConfig{
+				MessageID: "yourGroups",
+			},
+		))
 		bot.HandledSend(resp)
 
 		for _, group := range groups {
@@ -334,17 +441,21 @@ func handleMyGroups(ctx *handleContext) error {
 				for idx, user := range users {
 					usernames[idx] = "@" + user.Username
 					if user.UserID == group.OwnerID {
-						usernames[idx] += " (owner)"
+						usernames[idx] += " (⭐)"
 					}
 				}
 
 				resp := tgbotapi.NewMessage(
 					ctx.msg.Chat.ID,
-					fmt.Sprintf(
-						"<b>%s</b>\n\nThe group has %d members.\n%s",
-						group.Name,
-						len(users),
-						strings.Join(usernames, ", "),
+					ctx.localizer.MustLocalize(
+						&i18n.LocalizeConfig{
+							MessageID: "groupEntry",
+							TemplateData: map[string]any{
+								"GroupName":   group.Name,
+								"MemberCount": len(users),
+								"Usernames":   strings.Join(usernames, ", "),
+							},
+						},
 					),
 				)
 
@@ -365,7 +476,11 @@ func handleAddMember(ctx *handleContext) error {
 
 	switch len(groups) {
 	case 0:
-		resp := tgbotapi.NewMessage(ctx.msg.Chat.ID, "You don't have any created groups yet. Please create one first. /creategroup")
+		resp := tgbotapi.NewMessage(ctx.msg.Chat.ID, ctx.localizer.MustLocalize(
+			&i18n.LocalizeConfig{
+				MessageID: "noOwnedGroups",
+			},
+		))
 		bot.HandledSend(resp)
 		return nil
 
@@ -374,13 +489,24 @@ func handleAddMember(ctx *handleContext) error {
 
 		State.setPendingInviteCreation(ctx.msg.From.ID, group.GroupID)
 
-		resp := tgbotapi.NewMessage(ctx.msg.Chat.ID, fmt.Sprintf("Please mention the users you want to invite to the \"%s\" group.", group.Name))
+		resp := tgbotapi.NewMessage(ctx.msg.Chat.ID, ctx.localizer.MustLocalize(
+			&i18n.LocalizeConfig{
+				MessageID: "mentionToInvite",
+				TemplateData: map[string]any{
+					"GroupName": group.Name,
+				},
+			},
+		))
 		bot.HandledSend(resp)
 
 		return nil
 
 	default:
-		resp := tgbotapi.NewMessage(ctx.msg.Chat.ID, "<b>Invite another member.</b>\n\nSelect a group to add a member to (you can add members only to groups you created).")
+		resp := tgbotapi.NewMessage(ctx.msg.Chat.ID, ctx.localizer.MustLocalize(
+			&i18n.LocalizeConfig{
+				MessageID: "inviteMemberMenu",
+			},
+		))
 
 		resp.ReplyMarkup = getGroupSelectKeyboard(groups, func(group *db.Group) string {
 			return fmt.Sprintf("%s%d", INVITE_MEMBER_CALLBACK_PREFIX, group.GroupID)
@@ -403,7 +529,11 @@ func handleAddWish(ctx *handleContext) error {
 
 	switch len(groups) {
 	case 0:
-		resp := tgbotapi.NewMessage(ctx.msg.Chat.ID, "You don't have any groups yet. Please create or join one first.")
+		resp := tgbotapi.NewMessage(ctx.msg.Chat.ID, ctx.localizer.MustLocalize(
+			&i18n.LocalizeConfig{
+				MessageID: "noGroups",
+			},
+		))
 		bot.HandledSend(resp)
 		return nil
 
@@ -412,16 +542,24 @@ func handleAddWish(ctx *handleContext) error {
 
 		resp := tgbotapi.NewMessage(
 			ctx.msg.Chat.ID,
-			fmt.Sprintf(
-				"Ok! Lets add a wish to the \"%s\" group.",
-				group.Name,
+			ctx.localizer.MustLocalize(
+				&i18n.LocalizeConfig{
+					MessageID: "letsAddWish",
+					TemplateData: map[string]any{
+						"GroupName": group.Name,
+					},
+				},
 			),
 		)
 		bot.HandledSend(resp)
 
 		resp = tgbotapi.NewMessage(
 			ctx.msg.Chat.ID,
-			"Please send the URL of the wish you want to add with some description if applicable\\.\n\nExample:\n>>https://example\\.com\n>>This is a description",
+			ctx.localizer.MustLocalize(
+				&i18n.LocalizeConfig{
+					MessageID: "sendWishData",
+				},
+			),
 		)
 		resp.ParseMode = tgbotapi.ModeMarkdownV2
 		bot.HandledSend(resp)
@@ -433,7 +571,11 @@ func handleAddWish(ctx *handleContext) error {
 	default:
 		resp := tgbotapi.NewMessage(
 			ctx.msg.Chat.ID,
-			"<b>Add new wish.</b>\n\nSelect a group to add a wish to. Created wish will be shared with all members of the group.",
+			ctx.localizer.MustLocalize(
+				&i18n.LocalizeConfig{
+					MessageID: "addWishMenu",
+				},
+			),
 		)
 
 		resp.ReplyMarkup = getGroupSelectKeyboard(groups, func(group *db.Group) string {
@@ -457,7 +599,11 @@ func handleWishes(ctx *handleContext) error {
 
 	switch len(groups) {
 	case 0:
-		resp := tgbotapi.NewMessage(ctx.msg.Chat.ID, "You don't have any groups yet. Please create or join one first. /creategroup")
+		resp := tgbotapi.NewMessage(ctx.msg.Chat.ID, ctx.localizer.MustLocalize(
+			&i18n.LocalizeConfig{
+				MessageID: "noGroups",
+			},
+		))
 		bot.HandledSend(resp)
 		return nil
 
@@ -469,7 +615,14 @@ func handleWishes(ctx *handleContext) error {
 		}
 
 		if len(wishes) == 0 {
-			resp := tgbotapi.NewMessage(ctx.msg.Chat.ID, fmt.Sprintf("No wishes found for the \"%s\" group. /addwish", group.Name))
+			resp := tgbotapi.NewMessage(ctx.msg.Chat.ID, ctx.localizer.MustLocalize(
+				&i18n.LocalizeConfig{
+					MessageID: "noWishes",
+					TemplateData: map[string]any{
+						"GroupName": group.Name,
+					},
+				},
+			))
 			bot.HandledSend(resp)
 			return nil
 		}
@@ -481,9 +634,13 @@ func handleWishes(ctx *handleContext) error {
 
 		resp := tgbotapi.NewMessage(
 			ctx.msg.Chat.ID,
-			fmt.Sprintf(
-				"Here are wishes from the \"%s\" group!",
-				group.Name,
+			ctx.localizer.MustLocalize(
+				&i18n.LocalizeConfig{
+					MessageID: "hereAreWishes",
+					TemplateData: map[string]string{
+						"GroupName": group.Name,
+					},
+				},
 			),
 		)
 		bot.HandledSend(resp)
@@ -499,13 +656,22 @@ func handleWishes(ctx *handleContext) error {
 				text := ""
 
 				if user.UserID == ctx.msg.From.ID {
-					text += "Your wishes:\n\n"
+					text += ctx.localizer.MustLocalize(
+						&i18n.LocalizeConfig{
+							MessageID: "yourWishes",
+						},
+					)
 				} else {
-					text += fmt.Sprintf(
-						"@%s wishes:\n\n",
-						user.Username,
+					text += ctx.localizer.MustLocalize(
+						&i18n.LocalizeConfig{
+							MessageID: "userWishes",
+							TemplateData: map[string]interface{}{
+								"Username": user.Username,
+							},
+						},
 					)
 				}
+				text += "\n\n"
 
 				for idx, wish := range wishes {
 					text += fmt.Sprintf(
@@ -529,7 +695,11 @@ func handleWishes(ctx *handleContext) error {
 	default:
 		resp := tgbotapi.NewMessage(
 			ctx.msg.Chat.ID,
-			"<b>View group wishes.</b>\n\nSelect a group and I will show you all wishes from that group.",
+			ctx.localizer.MustLocalize(
+				&i18n.LocalizeConfig{
+					MessageID: "viewWishesMenu",
+				},
+			),
 		)
 
 		resp.ReplyMarkup = getGroupSelectKeyboard(groups, func(group *db.Group) string {

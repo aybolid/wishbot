@@ -6,8 +6,10 @@ import (
 	"strings"
 
 	"github.com/aybolid/wishbot/internal/db"
+	"github.com/aybolid/wishbot/internal/locals"
 	"github.com/aybolid/wishbot/internal/logger"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"github.com/nicksnyder/go-i18n/v2/i18n"
 )
 
 const (
@@ -22,6 +24,7 @@ const (
 )
 
 type areYouSureConfig struct {
+	localizer    *i18n.Localizer
 	chatID       int64
 	message      string
 	actionID     int
@@ -37,14 +40,27 @@ var actionHandlers = map[int]actionHandler{
 }
 
 func sendAreYouSure(config *areYouSureConfig) error {
-	text := fmt.Sprintf("<b>Are you sure?</b>\n\n%s", config.message)
+	text := config.localizer.MustLocalize(
+		&i18n.LocalizeConfig{
+			MessageID: "areYouSure",
+		},
+	)
+	text += fmt.Sprintf("\n\n%s", config.message)
 	msg := tgbotapi.NewMessage(config.chatID, text)
 
 	msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData("No", ARE_YOU_SURE_NO_CALLBACK_PREFIX),
+			tgbotapi.NewInlineKeyboardButtonData(config.localizer.MustLocalize(
+				&i18n.LocalizeConfig{
+					MessageID: "no",
+				},
+			), ARE_YOU_SURE_NO_CALLBACK_PREFIX),
 			tgbotapi.NewInlineKeyboardButtonData(
-				"Yes",
+				config.localizer.MustLocalize(
+					&i18n.LocalizeConfig{
+						MessageID: "yes",
+					},
+				),
 				fmt.Sprintf(
 					"%s%d:%s",
 					ARE_YOU_SURE_YES_CALLBACK_PREFIX, config.actionID, config.callbackData,
@@ -111,15 +127,29 @@ func handleKickMember(dataOffset int, ctx *handleContext) error {
 		return err
 	}
 
-	resp := tgbotapi.NewMessage(ctx.callbackQuery.Message.Chat.ID, fmt.Sprintf("You kicked @%s from the \"%s\" group.", user.Username, group.Name))
+	resp := tgbotapi.NewMessage(ctx.callbackQuery.Message.Chat.ID, ctx.localizer.MustLocalize(
+		&i18n.LocalizeConfig{
+			MessageID: "youKickedMember",
+			TemplateData: map[string]any{
+				"Username":  user.Username,
+				"GroupName": group.Name,
+			},
+		},
+	))
 	bot.HandledSend(resp)
 
 	go func() {
+		userLocalizer := locals.GetLocalizer(user.Language)
+
 		msg := tgbotapi.NewMessage(
 			user.ChatID,
-			fmt.Sprintf(
-				"Hey! You were kicked from the \"%s\" group.",
-				group.Name,
+			userLocalizer.MustLocalize(
+				&i18n.LocalizeConfig{
+					MessageID: "youWereKickedNotification",
+					TemplateData: map[string]any{
+						"GroupName": group.Name,
+					},
+				},
 			),
 		)
 		bot.HandledSend(msg)
@@ -139,7 +169,11 @@ func handleDeleteWish(dataOffset int, ctx *handleContext) error {
 		return err
 	}
 
-	resp := tgbotapi.NewMessage(ctx.callbackQuery.Message.Chat.ID, "Wish deleted.")
+	resp := tgbotapi.NewMessage(ctx.callbackQuery.Message.Chat.ID, ctx.localizer.MustLocalize(
+		&i18n.LocalizeConfig{
+			MessageID: "wishDeleted",
+		},
+	))
 	bot.HandledSend(resp)
 
 	return nil
@@ -165,13 +199,24 @@ func handleGroupLeave(dataOffset int, ctx *handleContext) error {
 		return err
 	}
 
-	resp := tgbotapi.NewMessage(ctx.callbackQuery.Message.Chat.ID, fmt.Sprintf("You left the \"%s\" group.", group.Name))
+	resp := tgbotapi.NewMessage(ctx.callbackQuery.Message.Chat.ID, ctx.localizer.MustLocalize(
+		&i18n.LocalizeConfig{
+			MessageID: "youLeftGroup",
+			TemplateData: map[string]any{
+				"GroupName": group.Name,
+			},
+		},
+	))
 	bot.HandledSend(resp)
 
 	if group.OwnerID == ctx.callbackQuery.From.ID {
 		resp = tgbotapi.NewMessage(
 			ctx.callbackQuery.Message.Chat.ID,
-			"As you are the owner, the group and all related data was deleted. I hope you didn't do it accidentally.",
+			ctx.localizer.MustLocalize(
+				&i18n.LocalizeConfig{
+					MessageID: "groupDeleted",
+				},
+			),
 		)
 		bot.HandledSend(resp)
 
@@ -186,11 +231,17 @@ func handleGroupLeave(dataOffset int, ctx *handleContext) error {
 					return
 				}
 
+				userLocalizer := locals.GetLocalizer(user.Language)
+
 				msg := tgbotapi.NewMessage(
 					user.ChatID,
-					fmt.Sprintf(
-						"Hey! The \"%s\" group was deleted by owner.",
-						group.Name,
+					userLocalizer.MustLocalize(
+						&i18n.LocalizeConfig{
+							MessageID: "groupDeletedNotification",
+							TemplateData: map[string]any{
+								"GroupName": group.Name,
+							},
+						},
 					),
 				)
 
@@ -209,12 +260,18 @@ func handleGroupLeave(dataOffset int, ctx *handleContext) error {
 					return
 				}
 
+				userLocalizer := locals.GetLocalizer(user.Language)
+
 				msg := tgbotapi.NewMessage(
 					user.ChatID,
-					fmt.Sprintf(
-						"Hey! %s left the \"%s\" group.",
-						ctx.callbackQuery.From.FirstName,
-						group.Name,
+					userLocalizer.MustLocalize(
+						&i18n.LocalizeConfig{
+							MessageID: "userLeftGroupNotification",
+							TemplateData: map[string]any{
+								"Username":  ctx.callbackQuery.From.FirstName,
+								"GroupName": group.Name,
+							},
+						},
 					),
 				)
 

@@ -6,8 +6,10 @@ import (
 	"strings"
 
 	"github.com/aybolid/wishbot/internal/db"
+	"github.com/aybolid/wishbot/internal/locals"
 	"github.com/aybolid/wishbot/internal/logger"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"github.com/nicksnyder/go-i18n/v2/i18n"
 )
 
 func handleText(ctx *handleContext) error {
@@ -36,10 +38,21 @@ func handleCreatingGroupFlow(ctx *handleContext) error {
 
 	State.releaseUser(ctx.msg.From.ID)
 
-	resp := tgbotapi.NewMessage(ctx.msg.Chat.ID, fmt.Sprintf("Group \"%s\" was created!", group.Name))
+	resp := tgbotapi.NewMessage(ctx.msg.Chat.ID, ctx.localizer.MustLocalize(
+		&i18n.LocalizeConfig{
+			MessageID: "groupCreatedNotification",
+			TemplateData: map[string]any{
+				"GroupName": group.Name,
+			},
+		},
+	))
 	bot.HandledSend(resp)
 
-	resp = tgbotapi.NewMessage(ctx.msg.Chat.ID, "Now you can add members to the group. /addmember")
+	resp = tgbotapi.NewMessage(ctx.msg.Chat.ID, ctx.localizer.MustLocalize(
+		&i18n.LocalizeConfig{
+			MessageID: "canAddMembers",
+		},
+	))
 	bot.HandledSend(resp)
 
 	return nil
@@ -55,7 +68,11 @@ func handleCreatingInviteFlow(ctx *handleContext) error {
 	mentions := getMentions(ctx.msg)
 
 	if len(mentions) == 0 {
-		resp := tgbotapi.NewMessage(ctx.msg.Chat.ID, "Please mention at least one user to invite.")
+		resp := tgbotapi.NewMessage(ctx.msg.Chat.ID, ctx.localizer.MustLocalize(
+			&i18n.LocalizeConfig{
+				MessageID: "mentionOneUser",
+			},
+		))
 		bot.HandledSend(resp)
 		return nil
 	}
@@ -76,10 +93,13 @@ func handleCreatingInviteFlow(ctx *handleContext) error {
 				if err != nil {
 					resp := tgbotapi.NewMessage(
 						ctx.msg.Chat.ID,
-						fmt.Sprintf(
-							"Seems like %s %s didn't chat with me yet. Please try again after they do.",
-							mention.User.FirstName,
-							mention.User.LastName,
+						ctx.localizer.MustLocalize(
+							&i18n.LocalizeConfig{
+								MessageID: "didntChatWithUser",
+								TemplateData: map[string]any{
+									"Username": mention.User.FirstName,
+								},
+							},
 						),
 					)
 					bot.HandledSend(resp)
@@ -95,7 +115,14 @@ func handleCreatingInviteFlow(ctx *handleContext) error {
 				if err != nil {
 					resp := tgbotapi.NewMessage(
 						ctx.msg.Chat.ID,
-						fmt.Sprintf("Seems like @%s didn't chat with me yet. Please try again after they do.", userName),
+						ctx.localizer.MustLocalize(
+							&i18n.LocalizeConfig{
+								MessageID: "didntChatWithUser",
+								TemplateData: map[string]any{
+									"Username": "@" + userName,
+								},
+							},
+						),
 					)
 					bot.HandledSend(resp)
 					return
@@ -108,7 +135,14 @@ func handleCreatingInviteFlow(ctx *handleContext) error {
 			}) {
 				resp := tgbotapi.NewMessage(
 					ctx.msg.Chat.ID,
-					fmt.Sprintf("@%s are already a member of the group.", user.Username),
+					ctx.localizer.MustLocalize(
+						&i18n.LocalizeConfig{
+							MessageID: "alreadyAMember",
+							TemplateData: map[string]any{
+								"Username": user.Username,
+							},
+						},
+					),
 				)
 				bot.HandledSend(resp)
 				return
@@ -131,7 +165,14 @@ func handleCreatingInviteFlow(ctx *handleContext) error {
 				// notify the user if something went wrong
 				resp := tgbotapi.NewMessage(
 					ctx.msg.Chat.ID,
-					fmt.Sprintf("Something went wrong while inviting %s. Please try again later.", user.Username),
+					ctx.localizer.MustLocalize(
+						&i18n.LocalizeConfig{
+							MessageID: "errorInvitingUser",
+							TemplateData: map[string]any{
+								"Username": "@" + user.Username,
+							},
+						},
+					),
 				)
 				bot.HandledSend(resp)
 			} else {
@@ -169,7 +210,11 @@ func handleCreatingWishFlow(ctx *handleContext) error {
 	}
 
 	if wishURL == "" {
-		resp := tgbotapi.NewMessage(ctx.msg.Chat.ID, "No URL found! Send the URL and some description if applicable.")
+		resp := tgbotapi.NewMessage(ctx.msg.Chat.ID, ctx.localizer.MustLocalize(
+			&i18n.LocalizeConfig{
+				MessageID: "errorNoURL",
+			},
+		))
 		bot.HandledSend(resp)
 		return nil
 	}
@@ -188,14 +233,22 @@ func handleCreatingWishFlow(ctx *handleContext) error {
 
 	group, err := db.GetGroup(groupID)
 	if err != nil {
-		resp := tgbotapi.NewMessage(ctx.msg.Chat.ID, "Something went wrong while trying to notify the group. Wish was created successfully though.")
+		resp := tgbotapi.NewMessage(ctx.msg.Chat.ID, ctx.localizer.MustLocalize(
+			&i18n.LocalizeConfig{
+				MessageID: "errorWishGroupNotification",
+			},
+		))
 		bot.HandledSend(resp)
 		return nil
 	}
 
 	members, err := db.GetGroupMembers(groupID)
 	if err != nil {
-		resp := tgbotapi.NewMessage(ctx.msg.Chat.ID, "Something went wrong while trying to notify the group. Wish was created successfully though.")
+		resp := tgbotapi.NewMessage(ctx.msg.Chat.ID, ctx.localizer.MustLocalize(
+			&i18n.LocalizeConfig{
+				MessageID: "errorWishGroupNotification",
+			},
+		))
 		bot.HandledSend(resp)
 		return nil
 	}
@@ -212,13 +265,18 @@ func handleCreatingWishFlow(ctx *handleContext) error {
 				return
 			}
 
+			userLocalizer := locals.GetLocalizer(user.Language)
+
 			msg := tgbotapi.NewMessage(
 				user.ChatID,
-				fmt.Sprintf(
-					"Hey! %s %s added a new wish to the \"%s\" group.",
-					ctx.msg.From.FirstName,
-					ctx.msg.From.LastName,
-					group.Name,
+				userLocalizer.MustLocalize(
+					&i18n.LocalizeConfig{
+						MessageID: "wishCreatedGroupNotification",
+						TemplateData: map[string]any{
+							"Username":  ctx.msg.From.FirstName,
+							"GroupName": group.Name,
+						},
+					},
 				),
 			)
 			bot.HandledSend(msg)
@@ -235,7 +293,11 @@ func handleCreatingWishFlow(ctx *handleContext) error {
 		}()
 	}
 
-	resp := tgbotapi.NewMessage(ctx.msg.Chat.ID, "Wish was created successfully!")
+	resp := tgbotapi.NewMessage(ctx.msg.Chat.ID, ctx.localizer.MustLocalize(
+		&i18n.LocalizeConfig{
+			MessageID: "wishCreatedNotification",
+		},
+	))
 	bot.HandledSend(resp)
 
 	State.releaseUser(ctx.msg.From.ID)

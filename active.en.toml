@@ -1,2 +1,176 @@
 [genericError]
-other = "Oops, something went wrong. Please try again later."
+other = "Oops! Something went wrong. Please try again later."
+
+[hello]
+other = "Hello, {{ .FirstName }}!"
+
+[intro]
+other = "I'm here to help you share your wishes with your friends."
+
+[sendGroupName]
+other = "Please enter a name for your new group."
+
+[noGroups]
+other = "You don't have any groups yet. Create or join one first. /creategroup"
+
+[noOwnedGroups]
+other = "You don't own any groups yet. Create one first. /creategroup"
+
+[yourGroups]
+other = "Here are your groups:"
+
+[groupEntry]
+other = "\n<b>{{ .GroupName }}</b>\nThis group has {{ .MemberCount }} members.\n{{ .Usernames }}"
+
+[mentionToInvite]
+other = "Mention the users you'd like to invite to '{{ .GroupName }}.'"
+
+[inviteMemberMenu]
+other = "<b>Invite a member.</b>\n\nSelect a group to add a member to (you can only add members to groups you created)."
+
+[letsAddWish]
+other = "Great! Let's add a wish to '{{ .GroupName }}.'"
+
+[sendWishData]
+other = "Please send the URL of the wish you'd like to add, along with a description if applicable.\n\nExample:\n>> https://example.com\n>> This is a description"
+
+[addWishMenu]
+other = "<b>Add a new wish.</b>\n\nSelect a group to add a wish to. The wish will be shared with all group members."
+
+[noWishes]
+other = "No wishes found for '{{ .GroupName }}.' /addwish"
+
+[hereAreWishes]
+other = "Here are the wishes for '{{ .GroupName }}:'"
+
+[hereAreYourWishes]
+other = "Here are your wishes for '{{ .GroupName }}:'"
+
+[viewWishesMenu]
+other = "<b>View group wishes.</b>\n\nSelect a group to see all its wishes."
+
+[yourWishes]
+other = "Your wishes:"
+
+[userWishes]
+other = "@{{ .Username }}'s wishes:"
+
+[leaveGroupMenu]
+other = "<b>Leave group :(</b>\n\nSelect a group to leave."
+
+[manageWishesMenu]
+other = "<b>Manage wishes.</b>\n\nSelect a group to manage its wishes."
+
+[manageMembers]
+other = "<b>Manage members.</b>\n\nSelect a group to manage its members."
+
+[noMembers]
+other = "No members found in '{{ .GroupName }}.' /addmember"
+
+[notOwner]
+other = "You're not the owner of '{{ .GroupName }}.'"
+
+[hereAreMembers]
+other = "Here are the members of '{{ .GroupName }}:'"
+
+[memberDisplay]
+other = "@{{ .Username }} has {{ .WishCount }} wishes."
+
+[leaveOwnedGroup]
+other = "Are you sure you want to leave '{{ .GroupName }}'?\n<b>This will delete the group, its members, and all wishes since you're the owner.</b>"
+
+[leaveGroup]
+other = "Are you sure you want to leave '{{ .GroupName }}'?"
+
+[groupInvite]
+other = "You've been invited to join '{{ .GroupName }}' by {{ .Inviter }}."
+
+[kickMember]
+other = "Are you sure you want to remove @{{ .Username }} from '{{ .GroupName }}'?"
+
+[areYouSure]
+other = "<b>Are you sure?</b>\n\n"
+
+[yes]
+other = "Yes"
+
+[no]
+other = "No"
+
+[wishDeleted]
+other = "Wish deleted."
+
+[youLeftGroup]
+other = "You left '{{ .GroupName }}.'"
+
+[groupDeleted]
+other = "Since you were the owner, the group and all related data have been deleted. Hope that wasn't accidental!"
+
+[groupDeletedNotification]
+other = "Hey! The '{{ .GroupName }}' group was deleted by its owner."
+
+[userLeftGroupNotification]
+other = "Hey! {{ .Username }} left '{{ .GroupName }}.'"
+
+[youKickedMember]
+other = "You removed @{{ .Username }} from '{{ .GroupName }}.'"
+
+[youWereKickedNotification]
+other = "Hey! You've been removed from '{{ .GroupName }}.'"
+
+[delete]
+other = "Delete"
+
+[kick]
+other = "Kick"
+
+[acceptedInviteNotification]
+other = "Hey! {{ .Username }} accepted your invite to '{{ .GroupName }}.'"
+
+[rejectedInviteNotification]
+other = "Hey! {{ .Username }} declined your invite to '{{ .GroupName }}.'"
+
+[youRejectedInvite]
+other = "You declined the invite."
+
+[youAcceptedInvite]
+other = "You accepted the invite."
+
+[deleteWish]
+other = "Are you sure you want to delete this wish?\n\n{{ .WishText }}"
+
+[groupCreatedNotification]
+other = "Hey! The '{{ .GroupName }}' group has been created."
+
+[canAddMembers]
+other = "You can add members to the group. /addmember"
+
+[mentionOneUser]
+other = "Please mention at least one user to invite."
+
+[didntChatWithUser]
+other = "It looks like {{ .Username }} hasn't chatted with me yet. Please try again later."
+
+[alreadyAMember]
+other = "@{{ .Username }} is already a member of the group."
+
+[errorInvitingUser]
+other = "Something went wrong while inviting {{ .Username }}. Please try again later."
+
+[errorNoURL]
+other = "No URL detected! Please send a URL along with a description if applicable."
+
+[wishCreatedNotification]
+other = "Hey! Your wish was added successfully!"
+
+[errorWishGroupNotification]
+other = "There was an issue notifying the group, but your wish was created successfully."
+
+[wishCreatedGroupNotification]
+other = "Hey! {{ .Username }} added a new wish to '{{ .GroupName }}.'"
+
+[reject]
+other = "Reject"
+
+[accept]
+other = "Accept"

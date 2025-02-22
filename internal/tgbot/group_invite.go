@@ -6,8 +6,10 @@ import (
 	"strings"
 
 	"github.com/aybolid/wishbot/internal/db"
+	"github.com/aybolid/wishbot/internal/locals"
 	"github.com/aybolid/wishbot/internal/logger"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"github.com/nicksnyder/go-i18n/v2/i18n"
 )
 
 const INVITE_MEMBER_CALLBACK_PREFIX = "invite_member:"
@@ -28,19 +30,33 @@ func (i *groupInvite) sendInviteMessage() error {
 		return err
 	}
 
+	localizer := locals.GetLocalizer(i.invited.Language)
+
 	invite := tgbotapi.NewMessage(
 		i.invited.ChatID,
-		fmt.Sprintf(
-			"<b>New group invite!</b>\n\nYou have been invited to join the \"<b>%s</b>\" group by <b>%s %s</b>.",
-			group.Name,
-			i.inviter.FirstName, i.inviter.LastName,
+		localizer.MustLocalize(
+			&i18n.LocalizeConfig{
+				MessageID: "groupInvite",
+				TemplateData: map[string]any{
+					"GroupName": group.Name,
+					"Inviter":   i.inviter.FirstName,
+				},
+			},
 		),
 	)
 
 	markup := tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData("Reject", fmt.Sprintf("%s%d:%d", REJECT_INVITE_CALLBACK_PREFIX, i.inviter.ID, i.groupID)),
-			tgbotapi.NewInlineKeyboardButtonData("Accept", fmt.Sprintf("%s%d:%d", ACCEPT_INVITE_CALLBACK_PREFIX, i.inviter.ID, i.groupID)),
+			tgbotapi.NewInlineKeyboardButtonData(localizer.MustLocalize(
+				&i18n.LocalizeConfig{
+					MessageID: "reject",
+				},
+			), fmt.Sprintf("%s%d:%d", REJECT_INVITE_CALLBACK_PREFIX, i.inviter.ID, i.groupID)),
+			tgbotapi.NewInlineKeyboardButtonData(localizer.MustLocalize(
+				&i18n.LocalizeConfig{
+					MessageID: "accept",
+				},
+			), fmt.Sprintf("%s%d:%d", ACCEPT_INVITE_CALLBACK_PREFIX, i.inviter.ID, i.groupID)),
 		),
 	)
 
