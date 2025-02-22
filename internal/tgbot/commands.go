@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/aybolid/wishbot/internal/db"
+	"github.com/aybolid/wishbot/internal/locals"
 	"github.com/aybolid/wishbot/internal/logger"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/nicksnyder/go-i18n/v2/i18n"
@@ -27,6 +28,8 @@ var cmdHandlers = map[string]cmdHandler{
 	"/managewishes": handleManageWishes,
 
 	"/cancel": handleCancel,
+
+	"/togglelanguage": handleToggleLanguage,
 }
 
 func handleCommand(ctx *handleContext) error {
@@ -45,6 +48,30 @@ func handleCommand(ctx *handleContext) error {
 }
 
 const MANAGE_MEMBERS_CALLBACK_PREFIX = "managemembers:"
+
+func handleToggleLanguage(ctx *handleContext) error {
+	newLanguage := "en"
+	if ctx.user.Language == locals.ENGLISH {
+		newLanguage = locals.UKRAINIAN
+	}
+
+	err := db.UpdateLanguage(ctx.user.UserID, newLanguage)
+	if err != nil {
+		return err
+	}
+
+	newLocalizer := locals.GetLocalizer(newLanguage)
+
+	resp := tgbotapi.NewMessage(ctx.msg.Chat.ID, newLocalizer.MustLocalize(
+		&i18n.LocalizeConfig{
+			MessageID: "languageToggled",
+		},
+	))
+
+	bot.HandledSend(resp)
+
+	return nil
+}
 
 func handleManageMembers(ctx *handleContext) error {
 	groups, err := db.GetOwnedGroups(ctx.msg.From.ID)
@@ -216,7 +243,7 @@ func handleManageWishes(ctx *handleContext) error {
 			resp := tgbotapi.NewMessage(
 				ctx.msg.Chat.ID, ctx.localizer.MustLocalize(
 					&i18n.LocalizeConfig{
-						MessageID: "noWishesFound",
+						MessageID: "noWishes",
 						TemplateData: map[string]string{
 							"GroupName": group.Name,
 						},

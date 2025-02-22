@@ -74,6 +74,25 @@ func CreateUser(user *tgbotapi.User, chatID int64) (*User, error) {
 	return dbu.toUser(), nil
 }
 
+func UpdateLanguage(userID int64, language string) error {
+	tx, err := Database.Beginx()
+	if err != nil {
+		return err
+	}
+
+	updateQuery := "UPDATE users SET language = ? WHERE user_id = ?"
+	if _, err := tx.Exec(updateQuery, language, userID); err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (dbu *dbUser) toUser() *User {
 	return &User{
 		UserID:    dbu.UserID,

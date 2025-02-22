@@ -174,3 +174,6 @@ other = "Відхилити"
 
 [accept]
 other = "Прийняти"
+
+[languageToggled]
+other = "Тепер я буду говорити українською."
